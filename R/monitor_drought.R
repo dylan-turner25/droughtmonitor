@@ -14,24 +14,18 @@
 #' @param year "a character string or numeric value for the year to retrieve data for.
 #' `year` can be specified instead of start_date and end_date to retrieve data
 #' for an entire year or range of years"
-#' @param dx_lower An optional parameter specifying the lower bound for the
-#' drought statistics that records must be above to be returned.
-#' @param dx_upper  An optional parameter specifying the uppper bound for the
-#' drought statistics that records must be above to be returned.
-#'
 #' @return returns a tibble
 #' @export
 #'
 #' @examples
 #' data <- monitor_drought(aoi = "us",var = "cs",
-#'                         year = 2021,dx_lower = 0,
-#'                         dx_upper = 100)
+#'                         year = 2021)
 #' data <- monitor_drought(aoi = "01001",var = "cs",
 #'                        start_date = "1/1/2021",
 #'                        end_date = "12/31/2021")
 
-monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL, year = NULL,
-                            dx_lower = 0, dx_upper = 100){
+monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL,
+                            year = NULL){
 
   # if start date and end date aren't specified, create dates using the
   # specified year
@@ -54,8 +48,7 @@ monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL, year =
 
   # get the api query
   query <- gen_api_query(aoi = aoi, var = var,
-                         start_date = start_date, end_date = end_date,
-                         dx_lower = dx_lower, dx_upper = dx_upper)
+                         start_date = start_date, end_date = end_date)
 
   # initialize data as a list
   data_list <- list()

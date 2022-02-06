@@ -4,15 +4,7 @@
 \alias{monitor_drought}
 \title{Retrieve data from the U.S. Drought Monitor API}
 \usage{
-monitor_drought(
-  aoi,
-  var,
-  start_date = NULL,
-  end_date = NULL,
-  year = NULL,
-  dx_lower = 0,
-  dx_upper = 100
-)
+monitor_drought(aoi, var, start_date = NULL, end_date = NULL, year = NULL)
 }
 \arguments{
 \item{aoi}{The are of interest to call drought data for. Can be one of: "us"
@@ -33,12 +25,6 @@ either "cs" for comprehensive statistics or "wid" for weeks in drought.}
 \item{year}{"a character string or numeric value for the year to retrieve data for.
 \code{year} can be specified instead of start_date and end_date to retrieve data
 for an entire year or range of years"}
-
-\item{dx_lower}{An optional parameter specifying the lower bound for the
-drought statistics that records must be above to be returned.}
-
-\item{dx_upper}{An optional parameter specifying the uppper bound for the
-drought statistics that records must be above to be returned.}
 }
 \value{
 returns a tibble
@@ -48,8 +34,7 @@ Retrieve data from the U.S. Drought Monitor API
 }
 \examples{
 data <- monitor_drought(aoi = "us",var = "cs",
-                        year = 2021,dx_lower = 0,
-                        dx_upper = 100)
+                        year = 2021)
 data <- monitor_drought(aoi = "01001",var = "cs",
                        start_date = "1/1/2021",
                        end_date = "12/31/2021")

@@ -193,7 +193,7 @@ get_column_names <- function(query,names){
 }
 
 gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
-                          dx_lower = 0, dx_upper = 100, fips = NULL){
+                          fips = NULL){
 
 
   # make sure the supplied area of interest is valid
@@ -202,17 +202,12 @@ gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
   # make sure the supplied var is valid
   var <- valid_var(var)
 
-
-
   # pick the correct API based on the variable selected
   if(var %in% c("wid")){
     API <- "weeks_in_drought"
   }
-  if(var %in% c("cs") & dx_lower == 0 & dx_upper == 100 ){
+  if(var %in% c("cs") ){
     API <- "comp_stats"
-  }
-  if(var %in% c("cs") & (dx_lower > 0 | dx_upper < 100) ){
-    API <- "stats_by_threshold"
   }
 
   # assign area based on the relevant API and variable combination
@@ -229,25 +224,6 @@ gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
 
      # need to also make sure state is specified as fips code
      aoi <- unique(fips[which(fips$state == aoi),"state_code"])
-    }
-    if(aoi_level(aoi) == "county"){
-      area <- "CountyStatistics/"
-    }
-  }
-  if(API == "stats_by_threshold"){
-    # assign the area type based on the supplied area of interest
-    if(aoi_level(aoi) == "national"){
-      area <- "USStatistics/"
-    }
-    if(aoi_level(aoi) == "state"){
-
-      #for some reason, the stats_by_threshold api still requires
-      # ths USStatistics area even if a state is specified.
-      area <- "USStatistics/"
-      #area <- "StateStatistics/"
-
-      # need to also make sure state is specified as fips code
-      aoi <- unique(tigris::fips_codes[which(tigris::fips_codes$state == aoi),"state_code"])
     }
     if(aoi_level(aoi) == "county"){
       area <- "CountyStatistics/"
@@ -304,23 +280,12 @@ gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
      stat_type <- 1
 
       # paste the components specific to the variable together
-     if(dx_lower == 0 & dx_upper == 100){
       var_component <- paste0("GetDroughtSeverityStatisticsBy",stat,
                               "?aoi=",aoi,
                               "&startdate=",start_date,
                               "&enddate=",end_date,
                               "&statisticsType=",stat_type)
 
-     } else {
-       var_component <- paste0("GetBasicStatisticsBy",stat,
-                               "?aoi=",aoi,
-                               "&dx=",drought_level,
-                               "&DxLevelThresholdFrom=",dx_lower,
-                               "&DxLevelThresholdTo=",dx_upper,
-                               "&startdate=",start_date,
-                               "&enddate=",end_date,
-                               "&statisticsType=",stat_type)
-     }
 
       # paste together the query from constituent parts
       query <- c(query, paste0(base_url,area,var_component))
@@ -329,10 +294,6 @@ gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
     # return the query
     return(query)
   }
-  # if(var == "sbt"){
-  #   # initialize a vector to store queries
-  #   query <- c()
-  # }
 }
 
 check_status_code <- function(status_code){
