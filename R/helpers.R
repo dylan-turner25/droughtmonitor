@@ -7,7 +7,7 @@
 #' @noRd
 #' @keywords internal
 #'
-#' @import tigris
+#' @import tidycensus
 #'
 #' @examples
 #' valid_aoi(1)
@@ -31,8 +31,8 @@ valid_aoi <- function(aoi){
     }
   }
 
-  # load fips codes from tigris
-  fips <- tigris::fips_codes
+  # load fips codes from tidycensus
+  fips <- tidycensus::fips_codes
 
   # get a vector of state codes
   state_abb <- trimws(unique(fips$state))
@@ -60,7 +60,7 @@ valid_aoi <- function(aoi){
       # check to see if the aoi is in one of the state fips codes
     } else if (as.numeric(aoi) %in% as.numeric(state_fips)){
 
-      # get fips code as it is formatted in the tigris data set
+      # get fips code as it is formatted in the tidycensus data set
       matching_fips <- state_fips[which(as.numeric(aoi) == as.numeric(state_fips))]
 
       # get the state abbreviation of the matching fips code
@@ -83,7 +83,7 @@ valid_aoi <- function(aoi){
     if(as.numeric(aoi) %in% as.numeric(county_fips)){
 
       # get the fips code that matches and return it in the same
-      # format as the tigris data set (i.e. convert 4 digit fips to 5 digits)
+      # format as the tidycensus data set (i.e. convert 4 digit fips to 5 digits)
       matching_fips <- county_fips[which(as.numeric(aoi) == as.numeric(county_fips))]
 
       return(matching_fips)
@@ -102,8 +102,8 @@ aoi_level <- function(aoi){
     return("national")
   }
 
-  # load fips codes from tigris
-  fips <- tigris::fips_codes
+  # load fips codes from tidycensus
+  fips <- tidycensus::fips_codes
 
   # get a vector of state codes
   state_abb <- trimws(unique(fips$state))
