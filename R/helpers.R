@@ -18,6 +18,7 @@
 #' valid_aoi(01001)
 #' valid_aoi("1001")
 #' valid_aoi("01001")
+
 valid_aoi <- function(aoi){
 
   # if us or continential us is choosen, then
@@ -295,6 +296,7 @@ gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
     return(query)
   }
 }
+
 
 check_status_code <- function(status_code){
   if(status_code != 200){

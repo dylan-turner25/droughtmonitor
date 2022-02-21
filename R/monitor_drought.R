@@ -23,7 +23,6 @@
 #' data <- monitor_drought(aoi = "01001",var = "cs",
 #'                        start_date = "1/1/2021",
 #'                        end_date = "12/31/2021")
-
 monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL,
                             year = NULL){
 
