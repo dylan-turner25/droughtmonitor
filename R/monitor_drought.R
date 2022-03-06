@@ -135,4 +135,3 @@ monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL,
 
 
 
-

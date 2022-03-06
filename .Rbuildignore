@@ -2,4 +2,7 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 README.rmd
+^READEME_cache
 ^\.github$
+^data-raw$
+^README_cache$

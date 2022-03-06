@@ -23,3 +23,46 @@ load_all()
 
 ## Introduction
 `droughtmonitor` allows users to access [U.S. Drought Monitor's](https://droughtmonitor.unl.edu/) publicly available data. The package provides a set of functions to easily navigate through and obtain drought related data provided by the organization. 
+
+
+## Examples
+
+### Example: Return comprehensive statistics for Sacramento County, CA 
+The following code returns comprehensive statistics by week from January 1st, 2020 to December 31st, 2020. Comprehensive statistics include ...
+```{r}
+data <- monitor_drought(aoi = "06067",
+                        var = "cs",
+                        start_date = "1/1/2020",
+                        end_date = "12/31/2020")
+data
+
+# The following are ways to obtain the same data 
+data <- monitor_drought(aoi = "6067", # robust to omitting the leading 0
+                        var = "cs",
+                        start_date = "1/1/2020",
+                        end_date = "12/31/2020")
+
+# specifying the year argument is an easier way to get data for an entire year
+data <- monitor_drought(aoi = "6067",
+                        var = "cs",
+                        year = 2020) 
+
+# note that map releases do not always correspond to the first and last days
+# of the year, meaning the returned data may be slightly outside the 
+# specified year(s). For example, in this case the minimum map dates is 
+# December 31st  of the previous year. 
+summary(data$MapDate)
+
+
+# The year argument can also be specified as a range for multiple years of data
+data <- monitor_drought(aoi = "06067",
+                        var = "cs",
+                        year = 2020:2021) 
+
+
+```
+
+### Example: 
+
+
+

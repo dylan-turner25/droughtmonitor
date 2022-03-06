@@ -7,7 +7,6 @@
 #' @noRd
 #' @keywords internal
 #'
-#' @import tidycensus
 #'
 #' @examples
 #' valid_aoi(1)
@@ -18,8 +17,7 @@
 #' valid_aoi(01001)
 #' valid_aoi("1001")
 #' valid_aoi("01001")
-
-valid_aoi <- function(aoi){
+valid_aoi <- function(aoi, fips = fips_codes){
 
   # if us or continential us is choosen, then
   # stop and return the aoi
@@ -31,11 +29,8 @@ valid_aoi <- function(aoi){
     }
   }
 
-  # load fips codes from tidycensus
-  fips <- tidycensus::fips_codes
-
   # get a vector of state codes
-  state_abb <- trimws(unique(fips$state))
+  state_abb <- trimws(unique(fips_codes$state))
 
   # get a vector state fips
   state_fips <- trimws(unique(fips$state_code))
@@ -92,7 +87,7 @@ valid_aoi <- function(aoi){
 
 }
 
-aoi_level <- function(aoi){
+aoi_level <- function(aoi, fips = fips_codes){
 
   # make sure supplied aoi is valid
   aoi <- valid_aoi(aoi)
@@ -102,11 +97,8 @@ aoi_level <- function(aoi){
     return("national")
   }
 
-  # load fips codes from tidycensus
-  fips <- tidycensus::fips_codes
-
   # get a vector of state codes
-  state_abb <- trimws(unique(fips$state))
+  state_abb <- trimws(unique(fips_codes$state))
 
   # check to see if the area of interest is a state
   if(aoi %in% state_abb){
@@ -297,7 +289,6 @@ gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
   }
 }
 
-
 check_status_code <- function(status_code){
   if(status_code != 200){
     stop(paste0("HTTP status code: ", status_code))
@@ -305,6 +296,40 @@ check_status_code <- function(status_code){
 }
 
 
+
+#' Dataset with FIPS codes for US states and counties taken from the `tidycensus`
+#'  package
+#'
+#' Note: this dataset includes FIPS codes for all counties that have appeared in
+#' the decennial Census or American Community Survey from 2010 to the present.
+#' This means that counties that have been renamed or absorbed into other
+#' geographic entities since 2010 remain in this dataset along with newly added
+#' or renamed counties.
+#'
+#' If you need the FIPS codes and names for counties for a particular Census
+#' year, you can use the \link[tigris]{counties} function from the tigris
+#' package and set the year parameter as required.
+#'
+#' @title Dataset with FIPS codes for US states and counties
+#' @description Built-in dataset for smart state and county lookup.
+#'              To access the data directly, issue the command \code{data(fips_codes)}.
+#'
+#' \itemize{
+#'   \item \code{county}: County name, title-case
+#'   \item \code{county_code}: County code. (3-digit, 0-padded, character)
+#'   \item \code{state}: Upper-case abbreviation of state
+#'   \item \code{state_code}: State FIPS code (2-digit, 0-padded, character)
+#'   \item \code{state_name}: Title-case name of state
+#' }
+#'
+#' @docType data
+#' @keywords datasets
+#' @name fips_codes
+#'
+#' @source \url{https://walker-data.com/tidycensus/reference/fips_codes.html}
+#'
+#' @usage data(fips_codes)
+"fips_codes"
 
 
 
