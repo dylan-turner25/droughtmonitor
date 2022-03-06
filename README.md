@@ -5,12 +5,12 @@ droughtmonitor: access data from U.S. Drought Monitor
 -   [Examples](#examples)
     -   [Example: Return comprehensive statistics for Sacramento County,
         CA](#example-return-comprehensive-statistics-for-sacramento-county-ca)
+    -   [Example:](#example)
 
-[![Project Status: Active – The project has reached a stable, usable
-state and is being actively
-developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#WIP)
+[![Project Status:
+WIP](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#WIP)
 [![Lifecycle:
-stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://www.tidyverse.org/lifecycle/#experimental)
+Experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
 
 ## Introduction
 
@@ -83,3 +83,5 @@ data <- monitor_drought(aoi = "06067",
                         var = "cs",
                         year = 2020:2021) 
 ```
+
+### Example:
