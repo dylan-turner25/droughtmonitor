@@ -11,8 +11,9 @@ on:
     branches: [main, master]
 
 name: R-CMD-check
-      if: runner.os == 'macOS'
-      run: brew cask install xquartz
+
+- if: runner.os == 'macOS'
+  run: brew install --cask xquartz
 
 jobs:
   R-CMD-check:
