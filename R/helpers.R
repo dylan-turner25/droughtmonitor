@@ -186,7 +186,7 @@ get_column_names <- function(query,names){
 }
 
 gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
-                          fips = NULL){
+                          fips = fips_codes){
 
 
   # make sure the supplied area of interest is valid
