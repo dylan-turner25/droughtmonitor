@@ -3,7 +3,7 @@
 #' @param aoi A numeric value or character string representing
 #' either a state abbreviation, state fips code, or county fips code.
 #'
-#' @return
+#' @return returns a character string representing a 5-digit FIPS code
 #' @noRd
 #' @keywords internal
 #'
@@ -232,16 +232,15 @@ gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
     # initialize a vector to store queries
     query <- c()
 
-    # loop over the two stat types avaliable for weeks in drought
-    for(stat in c("NonConsecutive","Consecutive")){
+    # loop over drought levels
+    for(drought_level in 0:4){
 
-      # if the drought level isn't specified, default to 0
-      if(!exists("drought_level")){
-        drought_level <- 0
-      }
+    # loop over the two stat types avaliable for weeks in drought
+    for(stat in c("NonConsecutiveStatisticsCounty","ConsecutiveWeeksCounty")){
+
 
       # paste the components specific to the variable together
-      var_component <- paste0("Get",stat,"StatisticsCounty?aoi=",
+      var_component <- paste0("Get",stat,"?aoi=",
                               aoi,"&dx=",drought_level, "&minimumweeks=0" ,
                               "&startdate=",start_date,
                               "&enddate=",end_date)
@@ -249,6 +248,8 @@ gen_api_query <- function(aoi, var, start_date = NULL, end_date = NULL,
 
       # paste together the querty from constituent parts
       query <- c(query, paste0(base_url,area,var_component))
+    }
+
     }
 
     # return the query

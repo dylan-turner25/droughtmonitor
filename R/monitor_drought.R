@@ -67,12 +67,12 @@ monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL,
     # extract the data as a list
     data <- httr::content(response)
 
-
     # bind each element of the list together to form a data frame
-    data_list[[index]] <- data.frame(do.call(rbind, data))
+    data_list[[index]] <- t(data.frame(do.call(rbind, data)))
 
     # rename the columns
-    colnames(data_list[[index]]) <- get_column_names(query = q,
+    if(var == "cs"){
+      colnames(data_list[[index]]) <- get_column_names(query = q,
                                                      names = colnames(data_list[[index]]))
 
     # remove any columns that are already in the first data frame
@@ -81,12 +81,38 @@ monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL,
       data_list[[index]] <- data_list[[index]][,-to_remove]
     }
 
+    }
+
+    if(var == "wid"){
+      drought_level = NULL
+      for(d in 0:4){
+        if(grepl(paste0("dx=",d),q)){
+          drought_level = paste0("D",d)
+        }
+      }
+
+      # replace the gsubs with direct assignment
+      colnames(data_list[[index]])[which(colnames(data_list[[index]]) == "NonConsecutiveWeeks" )] <- paste0(drought_level,"_NonConsecutiveWeeks")
+      colnames(data_list[[index]])[which(colnames(data_list[[index]]) == "ConsecutiveWeeks" )] <- paste0(drought_level,"_ConsecutiveWeeks")
+
+    }
+
     # advance index
     index <- index + 1
   }
 
-  # merge each data frame in the data_list
-  data <- do.call(cbind, data_list)
+
+  if(var == "wid"){
+    data <- data.frame(data_list[[1]]) # applied to wid data
+    data <- data %>% dplyr::select(-contains("Date"))
+    for(k in 2:length(data_list)){
+      data <- dplyr::full_join(data, data.frame(data_list[[k]]), by = c("FIPS","County","State"))
+      data <- data %>% dplyr::select(-contains("Date"))
+    }
+  } else{
+    data <- do.call(cbind, data_list) # applies to cs data
+  }
+
 
   # remove the list formatting from each column
   # Note: I've had alot of trouble trying to vectorize
@@ -94,6 +120,9 @@ monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL,
   for(i in seq_len(ncol(data))){
     data[,i] <-unlist(data[,i])
   }
+
+  # make sure data is in data frame format
+  data <- data.frame(data)
 
   # convert columns to numeric
   for(i in seq_len(ncol(data))){
@@ -121,6 +150,15 @@ monitor_drought <- function(aoi, var, start_date = NULL, end_date = NULL,
   to_remove <- c("ValidStart","ValidEnd","StatisticFormatID")
   if(T %in% (colnames(data) %in% to_remove )){
     data <- data[,-which(colnames(data) %in% to_remove)]
+  }
+
+  if(var == "wid"){
+
+    data <- data %>% dplyr:: group_by(FIPS, County, State) %>%
+      dplyr::summarize_all(max)
+
+    data$StartDate <- start_date
+    data$EndDate <- end_date
   }
 
   # convert the data to a tibble

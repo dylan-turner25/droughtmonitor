@@ -9,16 +9,14 @@ Description: `droughtmonitor` is a simple API wrapper for the U.S. Drought Monit
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.2
 Imports:
-    tibble,
-    httr,
-    crul,
-    memoise,
-    imager
+    memoise
 Suggests: 
     vcr (>= 0.6.0),
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    crul (>= 1.3.0),
+    tibble (>= 3.1.8)
 Config/testthat/edition: 3
 Depends: 
     R (>= 2.10)
