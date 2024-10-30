@@ -16,6 +16,7 @@
 #' for an entire year or range of years"
 #' @return returns a tibble
 #' @export
+#' @importFrom magrittr "%>%"
 #'
 #' @examples
 #' data <- monitor_drought(aoi = "us",var = "cs",
