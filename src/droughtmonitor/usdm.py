@@ -1,4 +1,3 @@
-#%%
 
 # a class USDM that contains the primary arguments for the data
 class USDM:
@@ -9,18 +8,23 @@ class USDM:
     self.year = year
     self.url = url
 
+  @staticmethod
   def a_helper_function():
-    print("this is a helper function")
+    result = "this is a helper function"
+    return(result)
 
 # methods to access each of three main APIs in the USDM
-  def get_comp_states(self):
-     print("comp stats for" + self.aoi)
+  def get_comp_stats(self):
+     result = "comp stats for " + self.aoi
+     return(result)
 
   def get_weeks_in_drought(self):
-      print("return weeks in drought for " + str(self.year))
+      result = "return weeks in drought for " + str(self.year)
+      return(result)
 
   def get_stats_by_threshold(self):
-      print("return stats by threshold for " + str(self.start_date))
+      result = "return stats by threshold for " + str(self.start_date)
+      return(result)
 
 
 #usdm = USDM(aoi = "us", start_date=2000, end_date=2024, year = 2020)
