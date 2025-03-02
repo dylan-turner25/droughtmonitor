@@ -21,7 +21,10 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
-dependencies = []
+dependencies = [
+"pandas>=2.2.3", 
+"pytest>=8.3.4"
+]
 
 [project.urls]
 Documentation = "https://github.com/dylan-turner25/droughtmonitor#readme"
