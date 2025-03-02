@@ -1,3 +1,10 @@
+import os
+import pandas as pd
+
+def fips_codes():
+  file_path = os.path.join(os.path.dirname(__file__), 'data', 'fips_codes.csv')
+  fips_codes = pd.read_csv(file_path)
+  return fips_codes
 
 # a class USDM that contains the primary arguments for the data
 class USDM:
@@ -12,7 +19,7 @@ class USDM:
   def a_helper_function():
     result = "this is a helper function"
     return(result)
-
+  
 # methods to access each of three main APIs in the USDM
   def get_comp_stats(self):
      result = "comp stats for " + self.aoi
