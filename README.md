@@ -5,6 +5,7 @@
 
 [![Python package](https://github.com/dylan-turner25/droughtmonitor/actions/workflows/python-package.yml/badge.svg)](https://github.com/dylan-turner25/droughtmonitor/actions/workflows/python-package.yml)
 
+[![codecov](https://codecov.io/gh/dylan-turner25/droughtmonitor/graph/badge.svg?token=NBLHixFDSD)](https://codecov.io/gh/dylan-turner25/droughtmonitor)
 -----
 
 ## Table of Contents
