@@ -2,6 +2,10 @@
 import os
 import pandas as pd
 
+def check_status_code(status_code):
+  if status_code != 200:
+    raise Exception(f"HTTP status code: {status_code}")
+  
 def load_fips_codes():
   """
   Reads a CSV file containing FIPS codes that is in the 'data' folder, cleans several columns,
@@ -23,6 +27,7 @@ def load_fips_codes():
   fips_codes['full_fips'] = fips_codes['state_code'] + fips_codes['county_code']
 
   return fips_codes
+
 
 def valid_aoi(aoi, fips_codes = load_fips_codes()):
     """
@@ -87,6 +92,42 @@ def valid_aoi(aoi, fips_codes = load_fips_codes()):
         else:
           raise ValueError("Invalid area of interest specified.")
 
+
+def aoi_level(aoi, fips_codes = load_fips_codes()):
+  """
+  Determine the level of the area of interest (AOI) based on the provided aoi parameter.
+  
+  Parameters:
+  aoi (str): The area of interest.
+  fips_codes (DataFrame): A DataFrame containing FIPS codes, defaults to data loading via load_fips_codes().
+  
+  Returns:
+  str: The level of the area of interest, which can be "national", "state", or "county".
+  
+  Raises:
+  ValueError: If the supplied AOI is not valid.
+  """
+
+  # make sure supplied aoi is valid
+  aoi = valid_aoi(aoi)
+
+  # check if the area of interest is national
+  if aoi.lower() in ["us", "conus", "total"]:
+      return "national"
+
+  # get a list of state codes, state abbreviations, and county fips to
+  # check aoi agains
+  state_abb = list(set(fips_codes['state'].str.strip()))
+  state_code = list(set(fips_codes['state_code'].str.strip()))
+  county_fips = list(set(fips_codes['full_fips'].str.strip()))
+
+  # check to see if the area of interest is a state
+  if aoi in state_code or aoi in state_abb:
+      return "state"
+
+  # check to see if the area of interest is a county
+  if aoi in county_fips:
+      return "county"
 
 
 # a class USDM that contains the primary arguments for the data

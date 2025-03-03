@@ -17,6 +17,25 @@ def test_valid_aoi():
     with pytest.raises(ValueError):
         usdm.valid_aoi("invalid_aoi")
 
+def test_aoi_level():
+    """
+    test the 'aoi_level' function to make sure it returns the correct geographic scope
+    """
+    assert usdm.aoi_level(1) == "state"
+    assert usdm.aoi_level("01") == "state"
+    assert usdm.aoi_level("AL") == "state"
+    assert usdm.aoi_level("al") == "state"
+    assert usdm.aoi_level(1001) == "county"
+    assert usdm.aoi_level("1001") == "county"
+    assert usdm.aoi_level("01001") == "county"
+    assert usdm.aoi_level("us") == "national"
+    assert usdm.aoi_level("US") == "national"
+    assert usdm.aoi_level("CONUS") == "national"
+    assert usdm.aoi_level("conus") == "national"
+    assert usdm.aoi_level("total") == "national"
+    assert usdm.aoi_level("TOTAL") == "national"
+    with pytest.raises(ValueError):
+        usdm.aoi_level("invalid_aoi")
 
 def test_helper():
     """
