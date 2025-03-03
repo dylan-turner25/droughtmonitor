@@ -5,6 +5,13 @@ from datetime import datetime
 
 
 def check_status_code(status_code):
+  """
+  Checks if the provided HTTP status code is 200 (OK).
+  Args:
+    status_code (int): The HTTP status code to check.
+  Raises:
+    Exception: If the status code is not 200, an exception is raised with the status code.
+  """
   if status_code != 200:
     raise Exception(f"HTTP status code: {status_code}")
   
@@ -29,7 +36,6 @@ def load_fips_codes():
   fips_codes['full_fips'] = fips_codes['state_code'] + fips_codes['county_code']
 
   return fips_codes
-
 
 def valid_aoi(aoi, fips_codes = load_fips_codes()):
     """
@@ -94,7 +100,6 @@ def valid_aoi(aoi, fips_codes = load_fips_codes()):
         else:
           raise ValueError("Invalid area of interest specified.")
 
-
 def aoi_level(aoi, fips_codes = load_fips_codes()):
   """
   Determine the level of the area of interest (AOI) based on the provided aoi parameter.
@@ -131,37 +136,118 @@ def aoi_level(aoi, fips_codes = load_fips_codes()):
   if aoi in county_fips:
       return "county"
 
-def valid_dates(start_date=None, end_date=None, year=None):
-  if start_date is None and end_date is None:
-      if year is None:
-          raise ValueError("You must specify the start_date and end_date parameters or specify the year parameter.")
-      else:
-          if(isinstance(year, int)):
-              year = [year]
-          start_date = f"1/1/{min(year)}"
-          end_date = f"12/31/{max(year)}"
+def determine_date_type(date_list):
+  """
+  Determines the type of dates in the provided list.
   
-      return start_date, end_date
-  elif start_date is None or end_date is None:
-      raise ValueError("You must specify both the start_date and end_date parameters.")
-  else:
-      return start_date, end_date
+  Args:
+    date_list (list or int or str): A list of dates or a single date. Dates can be in the form of a year (int) or a string in the format "YYYY-MM-DD" or "MM-DD-YYYY".
+  
+  Returns:
+    str: A string indicating the type of dates in the list:
+      - "year" if all dates are years (integers).
+      - "date" if all dates are in a valid date string format.
+      - "mixed" if there is a mix of years and date strings.
+      - "invalid" if the input is not a valid date or year.
+  """
 
+  if not isinstance(date_list, list):
+    date_list = [date_list]
+
+  year_count = 0
+  date_count = 0
+
+  for date in date_list:
+
+    if len(str(date)) == 4 and isinstance(date, int):
+      year_count += 1
+
+    elif isinstance(date, str):
+      date = date.replace("-", "/")
+      try:  
+        # try year-month-day format
+        try:
+            datetime.strptime(date, "%Y/%m/%d")
+            date_count += 1
+        except ValueError:
+          pass
+
+        # try month-day-year format
+        try:
+          datetime.strptime(date, "%m/%d/%Y")
+          date_count += 1
+        except ValueError:
+          pass
+
+      # if neither format works, return invalid  
+      except ValueError:
+        return "invalid"
+    else:
+      return "invalid"
+
+  if year_count == len(date_list):
+    return "year"
+  elif date_count == len(date_list):
+    return "date"
+  elif year_count > 0 and date_count > 0:
+    return "mixed"
+  else:
+    return "invalid"
+
+def valid_dates(time_period):
+ 
+  # determine date type 
+  date_type = determine_date_type(time_period)
+
+  if date_type == "year":
+    if(isinstance(time_period, int)):
+      time_period = [time_period]
+    start_date = f"01/01/{min(time_period)}"
+    end_date = f"12/31/{max(time_period)}"
+    return start_date, end_date
+  
+  if date_type == "date":
+    if len(time_period) == 2:
+      start_date = time_period[0].replace("-", "/")
+      end_date = time_period[1].replace("-", "/")
+
+      # check is start date is in day-month-year format
+      try:
+        datetime.strptime(start_date, "%d/%m/%Y")
+        start_date = datetime.strptime(start_date, "%d/%m/%Y").strftime("%m/%d/%Y")
+      except ValueError:
+        pass
+
+      # check if end date is in year-month-day format
+      try:
+        datetime.strptime(end_date, "%Y/%m/%d")
+        end_date = datetime.strptime(end_date, "%Y/%m/%d").strftime("%m/%d/%Y")
+      except ValueError:
+        pass
+
+    else:
+      raise ValueError("A time_period entered as dates should be a list of exactly two dates specifying the start and end dates.")
+    return start_date, end_date
+ 
+  if date_type == "mixed" or date_type == "invalid":
+    raise ValueError("The values entered for the time_period parameter are not valid. Please enter a list of years, a list of two dates (i.e. start and end dates)")
+
+ 
+ 
 
 # a class USDM that contains the primary arguments for the data
 class USDM:
-  def __init__(self, aoi, start_date=None, end_date=None, year=None, url = "https://usdmdataservices.unl.edu/api/"):
+  def __init__(self, aoi, time_period, url = "https://usdmdataservices.unl.edu/api/"):
     self.aoi = valid_aoi(aoi)
-    
 
-
-    self.start_date = start_date
-    self.end_date = end_date
-    self.year = year
+    # clean dates
+    cleaned_dates = valid_dates(time_period)
+    self.start_date = cleaned_dates[0]
+    self.end_date = cleaned_dates[1]
+ 
     self.url = url
 
   
-
   @staticmethod
   def a_helper_function():
     result = "this is a helper function"

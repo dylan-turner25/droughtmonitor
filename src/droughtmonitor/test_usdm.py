@@ -3,14 +3,25 @@ import pytest
 from droughtmonitor import usdm
 from droughtmonitor.usdm import load_fips_codes
 
+def determine_date_type(date_list):
+    assert usdm.determine_date_type([2020,2021,2022]) == "year"
+    assert usdm.determine_date_type(["2020-01-01", "2022/12/31"]) == "date"
+    assert usdm.determine_date_type(["01/01/2020", "12-31-2022"]) == "date"
+    assert usdm.determine_date_type(["01-01-2020", "2022-12-31"]) == "date"
+    assert usdm.determine_date_type(["2020-01-01", 2022]) == "mixed"
+    assert usdm.determine_date_type("2020-01-01") == "date"
+    assert usdm.determine_date_type(2020) == "year"
+    assert usdm.determine_date_type("2020") == "year"
+    assert usdm.determine_date_type("invalid") == "invalid"
+
 def test_valid_dates():
-    assert usdm.valid_dates(start_date='2010-01-01', end_date='2020-12-31') == ('2010-01-01', '2020-12-31')
-    assert usdm.valid_dates(year = 2015) == ('1/1/2015', '12/31/2015')
-    assert usdm.valid_dates(year = [2015, 2016]) == ('1/1/2015', '12/31/2016')
+    assert usdm.valid_dates(2020) == ("01/01/2020", "12/31/2020")    
+    assert usdm.valid_dates([2020,2021,2022]) == ("01/01/2020", "12/31/2022")
+    assert usdm.valid_dates(["01-01-2020", "12-31-2022"]) == ("01/01/2020", "12/31/2022")
+    assert usdm.valid_dates(["01-01-2020", "2022-12-31"]) == ("01/01/2020", "12/31/2022")
+    assert usdm.valid_dates(2020) == ("01/01/2020", "12/31/2020")
     with pytest.raises(ValueError):
-        usdm.valid_dates(start_date='2010-01-01')
-    with pytest.raises(ValueError):
-        usdm.valid_dates(end_date='2020-12-31')
+        usdm.valid_dates("invalid")
 
 
 def test_valid_aoi():
@@ -59,7 +70,7 @@ def test_get_comp_stats():
     """
     Test the get_comp_states function.
     """
-    drought_object = usdm.USDM(aoi = "us", start_date=2000, end_date=2024, year = 2020)
+    drought_object = usdm.USDM(aoi = "us", time_period = 2020)
     result = drought_object.get_comp_stats()
     assert result == 'comp stats for TOTAL'
 
