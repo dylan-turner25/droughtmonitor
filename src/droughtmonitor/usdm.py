@@ -264,8 +264,8 @@ class USDM:
         for stat in stat_types]
     )
 
-    # initialize data as a list
-    data_list = {}
+    # initialize data as a ldict
+    data_dict = {}
 
     # initialize a index variable
     index = 1
@@ -286,16 +286,37 @@ class USDM:
       data = response.json()
 
       # add data to data_list dictionary
-      data_list[index] = pd.DataFrame(data)
+      data_dict[index] = pd.DataFrame(data)
 
+      # get the drought level from the query
+      drought_level = None
+      for d in range(5):
+        if f"dx={d}" in q:
+          drought_level = f"D{d}"
+
+      # replace the column names with direct assignment
+      data_dict[index].rename(columns={
+          "nonConsecutiveWeeks": f"{drought_level}_NonConsecutiveWeeks",
+          "consecutiveWeeks": f"{drought_level}_ConsecutiveWeeks"
+      }, inplace=True)
 
       # advance index
       index += 1
     
-    return data_list
+    # merge each of the dataframes in the data_list dictionary using a full join
+    result_df = data_dict[1]
+    for i in range(2, len(data_dict) + 1):
+      result_df = result_df.merge(data_dict[i], how='outer')
+
+    # need to rename start date and end date to speicify that is the range for non consecutive weeks
+
+    # need to add a date range to specify the query
+
+    # maybe add a year variable based on query date range
+  
+    return result_df
 
 
- 
 
   def get_stats_by_threshold(self):
       result = "return stats by threshold for " + str(self.start_date)
