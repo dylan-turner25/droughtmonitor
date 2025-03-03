@@ -1,6 +1,8 @@
 #%%
 import os
 import pandas as pd
+from datetime import datetime
+
 
 def check_status_code(status_code):
   if status_code != 200:
@@ -129,11 +131,30 @@ def aoi_level(aoi, fips_codes = load_fips_codes()):
   if aoi in county_fips:
       return "county"
 
+def valid_dates(start_date=None, end_date=None, year=None):
+  if start_date is None and end_date is None:
+      if year is None:
+          raise ValueError("You must specify the start_date and end_date parameters or specify the year parameter.")
+      else:
+          if(isinstance(year, int)):
+              year = [year]
+          start_date = f"1/1/{min(year)}"
+          end_date = f"12/31/{max(year)}"
+  
+      return start_date, end_date
+  elif start_date is None or end_date is None:
+      raise ValueError("You must specify both the start_date and end_date parameters.")
+  else:
+      return start_date, end_date
+
 
 # a class USDM that contains the primary arguments for the data
 class USDM:
   def __init__(self, aoi, start_date=None, end_date=None, year=None, url = "https://usdmdataservices.unl.edu/api/"):
-    self.aoi = aoi
+    self.aoi = valid_aoi(aoi)
+    
+
+
     self.start_date = start_date
     self.end_date = end_date
     self.year = year

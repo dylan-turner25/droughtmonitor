@@ -3,6 +3,16 @@ import pytest
 from droughtmonitor import usdm
 from droughtmonitor.usdm import load_fips_codes
 
+def test_valid_dates():
+    assert usdm.valid_dates(start_date='2010-01-01', end_date='2020-12-31') == ('2010-01-01', '2020-12-31')
+    assert usdm.valid_dates(year = 2015) == ('1/1/2015', '12/31/2015')
+    assert usdm.valid_dates(year = [2015, 2016]) == ('1/1/2015', '12/31/2016')
+    with pytest.raises(ValueError):
+        usdm.valid_dates(start_date='2010-01-01')
+    with pytest.raises(ValueError):
+        usdm.valid_dates(end_date='2020-12-31')
+
+
 def test_valid_aoi():
     """
     test the 'valid_aoi' function
@@ -51,7 +61,7 @@ def test_get_comp_stats():
     """
     drought_object = usdm.USDM(aoi = "us", start_date=2000, end_date=2024, year = 2020)
     result = drought_object.get_comp_stats()
-    assert result == 'comp stats for us'
+    assert result == 'comp stats for TOTAL'
 
 
 
