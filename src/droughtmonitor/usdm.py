@@ -2,6 +2,7 @@
 import os
 import pandas as pd
 from datetime import datetime
+import requests
 
 def check_status_code(status_code):
   """
@@ -50,16 +51,6 @@ def valid_aoi(aoi, fips_codes = load_fips_codes()):
 
     Raises:
     ValueError: If the area of interest is not valid.
-
-    Examples:
-    >>> valid_aoi(1, fips_codes)
-    >>> valid_aoi("01", fips_codes)
-    >>> valid_aoi("AL", fips_codes)
-    >>> valid_aoi("al", fips_codes)
-    >>> valid_aoi(1001, fips_codes)
-    >>> valid_aoi(01001, fips_codes)
-    >>> valid_aoi("1001", fips_codes)
-    >>> valid_aoi("01001", fips_codes)
     """
 
     # convert aoi to a string
@@ -80,13 +71,13 @@ def valid_aoi(aoi, fips_codes = load_fips_codes()):
     if n <= 2:
         # check to see if the aoi is one of the state abbreviations
         if aoi in [s.lower() for s in fips_codes['state']]:
-            return fips_codes['state_code'][[s.lower() for s in fips_codes['state']].index(aoi)]
+            return fips_codes['state'][[s.lower() for s in fips_codes['state']].index(aoi)]
 
         # check to see if the aoi is in one of the state fips codes
         elif int(aoi) in [int(f) for f in fips_codes['state_code']]:
             matching_fips = fips_codes['state_code'][[int(f) for f in fips_codes['state_code']].index(int(aoi))]
-            #matching_abb = fips_codes.loc[fips_codes['state_code'] == matching_fips, 'state'].values[0]
-            return matching_fips
+            matching_abb = fips_codes.loc[fips_codes['state_code'] == matching_fips, 'state'].values[0]
+            return matching_abb
         else:
             raise ValueError("Invalid area of interest specified. Either use the state's 2 letter abbreviation or the state's FIPS code. If you are attempting to specify a county as the area of interest, use the county's  5-digit FIPS code.")
 
@@ -169,14 +160,12 @@ def determine_date_type(date_list):
             datetime.strptime(date, "%Y/%m/%d")
             date_count += 1
         except ValueError:
-          pass
-
-        # try month-day-year format
-        try:
-          datetime.strptime(date, "%m/%d/%Y")
-          date_count += 1
-        except ValueError:
-          pass
+          # try month-day-year format
+          try:
+            datetime.strptime(date, "%m/%d/%Y")
+            date_count += 1
+          except ValueError:
+            pass
 
       # if neither format works, return invalid  
       except ValueError:
@@ -243,6 +232,7 @@ class USDM:
  
     self.url = url
 
+
   
   @staticmethod
   def a_helper_function():
@@ -254,20 +244,64 @@ class USDM:
      result = "comp stats for " + self.aoi
      return(result)
 
-  def get_weeks_in_drought(self):
-      result = "return weeks in drought for " + str(self.year)
-      return(result)
+  def get_weeks_in_drought(self, drought_threshold = [0,1,2,3,4]):
+
+    # if a single drought threshold is provided as an integer, convert to a list
+    if isinstance(drought_threshold, int):
+      drought_threshold = [drought_threshold]
+
+    # define area for weeds in drought 
+    area = "ConsecutiveNonConsecutiveStatistics/"
+    
+    # initialize a list to store queries
+    query = []
+
+    # loop over drought levels
+    stat_types = ["NonConsecutiveStatisticsCounty", "ConsecutiveWeeksCounty"]
+    query.extend(
+      [f"{self.url}{area}Get{stat}?aoi={self.aoi}&dx={drought_level}&minimumweeks=0&startdate={self.start_date}&enddate={self.end_date}"
+        for drought_level in drought_threshold
+        for stat in stat_types]
+    )
+
+    # initialize data as a list
+    data_list = {}
+
+    # initialize a index variable
+    index = 1
+
+    # loop over each individual url in the query vector
+    for q in query:
+
+      # header specifying data should be returned in json format
+      headers = {'Accept': 'application/json'}
+
+      # get the data
+      response = requests.get(q, headers=headers)
+      
+      # check status code before continuing
+      check_status_code(response.status_code)
+
+      # extract the data as a list
+      data = response.json()
+
+      # add data to data_list dictionary
+      data_list[index] = pd.DataFrame(data)
+
+
+      # advance index
+      index += 1
+    
+    return data_list
+
+
+ 
 
   def get_stats_by_threshold(self):
       result = "return stats by threshold for " + str(self.start_date)
       return(result)
 
 
-#usdm = USDM(aoi = "us", start_date=2000, end_date=2024, year = 2020)
-
-#usdm.get_weeks_in_drought()
-#usdm.get_stats_by_threshold()
-
-
   
+
 # %%

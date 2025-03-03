@@ -26,10 +26,10 @@ def test_valid_dates():
         usdm.valid_dates("invalid")
 
 def test_valid_aoi():
-    assert usdm.valid_aoi(1) == "01"
-    assert usdm.valid_aoi("01") == "01"
-    assert usdm.valid_aoi("AL") == "01"
-    assert usdm.valid_aoi("al") == "01"
+    assert usdm.valid_aoi(1) == "AL"
+    assert usdm.valid_aoi("01") == "AL"
+    assert usdm.valid_aoi("AL") == "AL"
+    assert usdm.valid_aoi("al") == "AL"
     assert usdm.valid_aoi(1001) == "01001"
     assert usdm.valid_aoi("1001") == "01001"
     assert usdm.valid_aoi("01001") == "01001"
