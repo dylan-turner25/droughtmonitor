@@ -3,7 +3,6 @@ import os
 import pandas as pd
 from datetime import datetime
 
-
 def check_status_code(status_code):
   """
   Checks if the provided HTTP status code is 200 (OK).
@@ -231,9 +230,6 @@ def valid_dates(time_period):
  
   if date_type == "mixed" or date_type == "invalid":
     raise ValueError("The values entered for the time_period parameter are not valid. Please enter a list of years, a list of two dates (i.e. start and end dates)")
-
- 
- 
 
 # a class USDM that contains the primary arguments for the data
 class USDM:
