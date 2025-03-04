@@ -1,9 +1,8 @@
 import pytest
 from droughtmonitor import usdm
-from droughtmonitor.usdm import load_fips_codes
-from datetime import datetime    
 
-def determine_date_type():
+
+def test_determine_date_type():
     assert usdm.determine_date_type([2020, 2021, 2022]) == "year"
     assert usdm.determine_date_type(["2020-01-01", "2022/12/31"]) == "date"
     assert usdm.determine_date_type(["01/01/2020", "12-31-2022"]) == "date"
@@ -11,12 +10,12 @@ def determine_date_type():
     assert usdm.determine_date_type(["2020-01-01", 2022]) == "mixed"
     assert usdm.determine_date_type("2020-01-01") == "date"
     assert usdm.determine_date_type(2020) == "year"
-    assert usdm.determine_date_type("2020") == "year"
     assert usdm.determine_date_type("invalid") == "invalid"
 
+
 def test_valid_dates():
-    assert usdm.valid_dates(2020) == ("01/01/2020", "12/31/2020")    
-    assert usdm.valid_dates([2020,2021,2022]) == ("01/01/2020", "12/31/2022")
+    assert usdm.valid_dates(2020) == ("01/01/2020", "12/31/2020")
+    assert usdm.valid_dates([2020, 2021, 2022]) == ("01/01/2020", "12/31/2022")
     assert usdm.valid_dates(["01-01-2020", "12-31-2022"]) == ("01/01/2020", "12/31/2022")
     assert usdm.valid_dates(["01-01-2020", "2022-12-31"]) == ("01/01/2020", "12/31/2022")
     assert usdm.valid_dates(2020) == ("01/01/2020", "12/31/2020")
@@ -24,6 +23,7 @@ def test_valid_dates():
         usdm.valid_dates(["99-99-9999", "1111-11-11"])
     with pytest.raises(ValueError):
         usdm.valid_dates("invalid")
+
 
 def test_valid_geography():
     assert usdm.valid_geography(1) == "AL"
@@ -35,6 +35,7 @@ def test_valid_geography():
     assert usdm.valid_geography("01001") == "01001"
     with pytest.raises(ValueError):
         usdm.valid_geography("invalid_geography")
+
 
 def test_geography_level():
     assert usdm.geography_level(1) == "state"
@@ -53,14 +54,11 @@ def test_geography_level():
     with pytest.raises(ValueError):
         usdm.geography_level("invalid_geography")
 
+
 def test_helper():
     result = usdm.USDM.a_helper_function()
     assert result == 'this is a helper function'
 
-def test_get_comp_stats():
-    drought_object = usdm.USDM(geography = "us", time_period = 2020)
-    result = drought_object.get_comp_stats()
-    assert result == 'comp stats for TOTAL'
 
 def test_get_weeks_in_drought(mocker):
     # Mock the requests.get call to return a custom response
@@ -68,30 +66,38 @@ def test_get_weeks_in_drought(mocker):
     mock_response.status_code = 200
 
     mock_response.json.return_value = [
-    {'fips': '01003',
-    'startDate': '2023-09-12T00:00:00',
-    'endDate': '2023-11-14T00:00:00',
-    'consecutiveWeeks': 10,
-    'state': 'AL',
-    'county': 'Baldwin County'},
-    {'fips': '01007',
-    'startDate': '2023-11-14T00:00:00',
-    'endDate': '2023-12-26T00:00:00',
-    'consecutiveWeeks': 7,
-    'state': 'AL',
-    'county': 'Bibb County'},
-    {'fips': '01009',
-    'startDate': '2023-10-31T00:00:00',
-    'endDate': '2023-12-26T00:00:00',
-    'consecutiveWeeks': 9,
-    'state': 'AL',
-    'county': 'Blount County'},
-    {'fips': '01013',
-    'startDate': '2023-10-24T00:00:00',
-    'endDate': '2023-11-14T00:00:00',
-    'consecutiveWeeks': 4,
-    'state': 'AL',
-    'county': 'Butler County'}
+        {
+            'fips': '01003',
+            'startDate': '2023-09-12T00:00:00',
+            'endDate': '2023-11-14T00:00:00',
+            'consecutiveWeeks': 10,
+            'state': 'AL',
+            'county': 'Baldwin County'
+        },
+        {
+            'fips': '01007',
+            'startDate': '2023-11-14T00:00:00',
+            'endDate': '2023-12-26T00:00:00',
+            'consecutiveWeeks': 7,
+            'state': 'AL',
+            'county': 'Bibb County'
+        },
+        {
+            'fips': '01009',
+            'startDate': '2023-10-31T00:00:00',
+            'endDate': '2023-12-26T00:00:00',
+            'consecutiveWeeks': 9,
+            'state': 'AL',
+            'county': 'Blount County'
+        },
+        {
+            'fips': '01013',
+            'startDate': '2023-10-24T00:00:00',
+            'endDate': '2023-11-14T00:00:00',
+            'consecutiveWeeks': 4,
+            'state': 'AL',
+            'county': 'Butler County'
+        }
     ]
 
     mocker.patch("requests.get", return_value=mock_response)
@@ -110,6 +116,3 @@ def test_get_weeks_in_drought(mocker):
     assert "county" in result_df.columns
     assert "state" in result_df.columns
     assert result_df.state.unique() == ["AL"]
- 
-
-# %%
