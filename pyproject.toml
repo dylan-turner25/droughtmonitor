@@ -24,7 +24,8 @@ classifiers = [
 dependencies = [
 "pandas>=2.2.3", 
 "pytest>=8.3.4",
-"requests==2.32.3",
+"requests>=2.32.3",
+"mocker>=1.1.1"
 ]
 
 [project.urls]

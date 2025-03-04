@@ -37,12 +37,12 @@ def load_fips_codes():
 
   return fips_codes
 
-def valid_aoi(aoi, fips_codes = load_fips_codes()):
+def valid_geography(geography, geography_type = None ,fips_codes = load_fips_codes()):
     """
     Clean the area of interest and ensure it is in a valid format.
 
     Parameters:
-    aoi (str or int): A numeric value or character string representing
+    geography (str or int): A numeric value or character string representing
                     either a state abbreviation, state FIPS code, or county FIPS code.
     fips_codes (DataFrame): A DataFrame containing 'state', 'state_code', and 'county_code' columns.
 
@@ -53,78 +53,80 @@ def valid_aoi(aoi, fips_codes = load_fips_codes()):
     ValueError: If the area of interest is not valid.
     """
 
-    # convert aoi to a string
-    aoi = str(aoi).strip().lower()
+    # convert geography to a string
+    geography = str(geography).strip().lower()
 
-    # if us or continental us is chosen, then stop and return the aoi
-    if aoi in ["us", "conus", "total"]:
-        if aoi.lower() == "us":
+    # if us or continental us is chosen, then stop and return the geography
+    if geography in ["us", "conus", "total"]:
+        if geography.lower() == "us":
             return "TOTAL"
         else:
             return "CONUS"
 
+    if geography_type in ["fips",None]:
 
-    # get the number of characters in the aoi
-    n = len(aoi)
+      # get the number of characters in the geography
+      n = len(geography)
 
-    # if n is less than or equal to 2, process the aoi as a state
-    if n <= 2:
-        # check to see if the aoi is one of the state abbreviations
-        if aoi in [s.lower() for s in fips_codes['state']]:
-            return fips_codes['state'][[s.lower() for s in fips_codes['state']].index(aoi)]
+      # if n is less than or equal to 2, process the geography as a state
+      if n <= 2:
+          # check to see if the geography is one of the state abbreviations
+          if geography in [s.lower() for s in fips_codes['state']]:
+              return fips_codes['state'][[s.lower() for s in fips_codes['state']].index(geography)]
 
-        # check to see if the aoi is in one of the state fips codes
-        elif int(aoi) in [int(f) for f in fips_codes['state_code']]:
-            matching_fips = fips_codes['state_code'][[int(f) for f in fips_codes['state_code']].index(int(aoi))]
-            matching_abb = fips_codes.loc[fips_codes['state_code'] == matching_fips, 'state'].values[0]
-            return matching_abb
-        else:
-            raise ValueError("Invalid area of interest specified. Either use the state's 2 letter abbreviation or the state's FIPS code. If you are attempting to specify a county as the area of interest, use the county's  5-digit FIPS code.")
+          # check to see if the geography is in one of the state fips codes
+          elif int(geography) in [int(f) for f in fips_codes['state_code']]:
+              matching_fips = fips_codes['state_code'][[int(f) for f in fips_codes['state_code']].index(int(geography))]
+              matching_abb = fips_codes.loc[fips_codes['state_code'] == matching_fips, 'state'].values[0]
+              return matching_abb
+          else:
+              raise ValueError("Invalid area of interest specified. Either use the state's 2 letter abbreviation or the state's FIPS code. If you are attempting to specify a county as the area of interest, use the county's  5-digit FIPS code.")
 
-    # if n is greater than 2, process the aoi as a county
-    if n > 2:
-        # check to see if the aoi matches a county fips code
-        if int(aoi) in [int(f) for f in fips_codes['full_fips']]:
-            matching_fips = fips_codes['full_fips'][[int(f) for f in fips_codes['full_fips']].index(int(aoi))]
-            return matching_fips
-        else:
-          raise ValueError("Invalid area of interest specified.")
+      # if n is greater than 2, process the geography as a county
+      if n > 2:
+          # check to see if the geography matches a county fips code
+          if int(geography) in [int(f) for f in fips_codes['full_fips']]:
+              matching_fips = fips_codes['full_fips'][[int(f) for f in fips_codes['full_fips']].index(int(geography))]
+              return matching_fips
+          else:
+            raise ValueError("Invalid area of interest specified.")
 
-def aoi_level(aoi, fips_codes = load_fips_codes()):
+def geography_level(geography, geography_type = None, fips_codes = load_fips_codes()):
   """
-  Determine the level of the area of interest (AOI) based on the provided aoi parameter.
+  Determine the level of the area of interest (geography) based on the provided geography parameter.
   
   Parameters:
-  aoi (str): The area of interest.
+  geography (str): The area of interest.
   fips_codes (DataFrame): A DataFrame containing FIPS codes, defaults to data loading via load_fips_codes().
   
   Returns:
   str: The level of the area of interest, which can be "national", "state", or "county".
   
   Raises:
-  ValueError: If the supplied AOI is not valid.
+  ValueError: If the supplied geography is not valid.
   """
 
-  # make sure supplied aoi is valid
-  aoi = valid_aoi(aoi)
+  # make sure supplied geography is valid
+  geography = valid_geography(geography, geography_type)
 
   # check if the area of interest is national
-  if aoi.lower() in ["us", "conus", "total"]:
+  if geography.lower() in ["us", "conus", "total"]:
       return "national"
 
-  # get a list of state codes, state abbreviations, and county fips to
-  # check aoi agains
-  state_abb = list(set(fips_codes['state'].str.strip()))
-  state_code = list(set(fips_codes['state_code'].str.strip()))
-  county_fips = list(set(fips_codes['full_fips'].str.strip()))
+  if geography_type in ["fips",None]:
+    # get a list of state codes, state abbreviations, and county fips to
+    # check geography agains
+    state_abb = list(set(fips_codes['state'].str.strip()))
+    state_code = list(set(fips_codes['state_code'].str.strip()))
+    county_fips = list(set(fips_codes['full_fips'].str.strip()))
 
-  # check to see if the area of interest is a state
-  if aoi in state_code or aoi in state_abb:
-      return "state"
+    # check to see if the area of interest is a state
+    if geography in state_code or geography in state_abb:
+        return "state"
 
-  # check to see if the area of interest is a county
-  if aoi in county_fips:
-      return "county"
+    # check to see if the area of interest is a county
+    if geography in county_fips:
+        return "county"
 
 def determine_date_type(date_list):
   """
@@ -222,8 +224,9 @@ def valid_dates(time_period):
 
 # a class USDM that contains the primary arguments for the data
 class USDM:
-  def __init__(self, aoi, time_period, url = "https://usdmdataservices.unl.edu/api/"):
-    self.aoi = valid_aoi(aoi)
+  def __init__(self, geography = None, geography_type = None, time_period = None, url = "https://usdmdataservices.unl.edu/api/"):
+    self.geography_type = geography_type
+    self.geography = valid_geography(geography, geography_type)
 
     # clean dates
     cleaned_dates = valid_dates(time_period)
@@ -241,10 +244,11 @@ class USDM:
   
 # methods to access each of three main APIs in the USDM
   def get_comp_stats(self):
-     result = "comp stats for " + self.aoi
+     result = "comp stats for " + self.geography
      return(result)
 
-  def get_weeks_in_drought(self, drought_threshold = [0,1,2,3,4]):
+
+  def get_weeks_in_drought(self, drought_threshold = [0,1,2,3,4], stat_type = ["consecutive", "nonconsecutive"]):
 
     # if a single drought threshold is provided as an integer, convert to a list
     if isinstance(drought_threshold, int):
@@ -256,12 +260,19 @@ class USDM:
     # initialize a list to store queries
     query = []
 
-    # loop over drought levels
-    stat_types = ["NonConsecutiveStatisticsCounty", "ConsecutiveWeeksCounty"]
+    # replace "consecutive" and "nonconsecutive" with "ConsecutiveWeeksCounty" and "NonConsecutiveStatisticsCounty"
+    if isinstance(stat_type, str):
+       stat_type = [stat_type]
+
+    stat_type = [s.lower().replace("nonconsecutive", "NonConsecutiveStatisticsCounty").replace("consecutive", "ConsecutiveWeeksCounty") for s in stat_type]
+
+    # iterate over stat_type and drought_threshold to create a list of queries
     query.extend(
-      [f"{self.url}{area}Get{stat}?aoi={self.aoi}&dx={drought_level}&minimumweeks=0&startdate={self.start_date}&enddate={self.end_date}"
+      [
+        f"{self.url}{area}Get{stat}?geography={self.geography}&dx={drought_level}&minimumweeks=0&startdate={self.start_date}&enddate={self.end_date}"
         for drought_level in drought_threshold
-        for stat in stat_types]
+        for stat in stat_type
+      ]
     )
 
     # initialize data as a ldict
@@ -297,7 +308,9 @@ class USDM:
       # replace the column names with direct assignment
       data_dict[index].rename(columns={
           "nonConsecutiveWeeks": f"{drought_level}_NonConsecutiveWeeks",
-          "consecutiveWeeks": f"{drought_level}_ConsecutiveWeeks"
+          "consecutiveWeeks": f"{drought_level}_ConsecutiveWeeks",
+          "startDate": f"{drought_level}_ConsecutiveWeeksStartDate",
+          "endDate": f"{drought_level}_ConsecutiveWeeksEndDate",
       }, inplace=True)
 
       # advance index
@@ -308,11 +321,14 @@ class USDM:
     for i in range(2, len(data_dict) + 1):
       result_df = result_df.merge(data_dict[i], how='outer')
 
-    # need to rename start date and end date to speicify that is the range for non consecutive weeks
+    #add date range to specify the query date range
+    result_df['QueryStartDate'] = pd.to_datetime(self.start_date)
+    result_df['QueryEndDate'] = pd.to_datetime(self.end_date)
 
-    # need to add a date range to specify the query
-
-    # maybe add a year variable based on query date range
+    # remove time of day from date columns
+    date_columns = [c for c in result_df.columns if "Date" in c]
+    for c in date_columns:
+      result_df[c] = pd.to_datetime(result_df[c]).dt.date
   
     return result_df
 

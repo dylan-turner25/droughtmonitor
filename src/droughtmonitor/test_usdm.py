@@ -1,10 +1,10 @@
-#%%
 import pytest
 from droughtmonitor import usdm
 from droughtmonitor.usdm import load_fips_codes
+from datetime import datetime    
 
-def determine_date_type(date_list):
-    assert usdm.determine_date_type([2020,2021,2022]) == "year"
+def determine_date_type():
+    assert usdm.determine_date_type([2020, 2021, 2022]) == "year"
     assert usdm.determine_date_type(["2020-01-01", "2022/12/31"]) == "date"
     assert usdm.determine_date_type(["01/01/2020", "12-31-2022"]) == "date"
     assert usdm.determine_date_type(["01-01-2020", "2022-12-31"]) == "date"
@@ -25,42 +25,91 @@ def test_valid_dates():
     with pytest.raises(ValueError):
         usdm.valid_dates("invalid")
 
-def test_valid_aoi():
-    assert usdm.valid_aoi(1) == "AL"
-    assert usdm.valid_aoi("01") == "AL"
-    assert usdm.valid_aoi("AL") == "AL"
-    assert usdm.valid_aoi("al") == "AL"
-    assert usdm.valid_aoi(1001) == "01001"
-    assert usdm.valid_aoi("1001") == "01001"
-    assert usdm.valid_aoi("01001") == "01001"
+def test_valid_geography():
+    assert usdm.valid_geography(1) == "AL"
+    assert usdm.valid_geography("01") == "AL"
+    assert usdm.valid_geography("AL") == "AL"
+    assert usdm.valid_geography("al") == "AL"
+    assert usdm.valid_geography(1001) == "01001"
+    assert usdm.valid_geography("1001") == "01001"
+    assert usdm.valid_geography("01001") == "01001"
     with pytest.raises(ValueError):
-        usdm.valid_aoi("invalid_aoi")
+        usdm.valid_geography("invalid_geography")
 
-def test_aoi_level():
-    assert usdm.aoi_level(1) == "state"
-    assert usdm.aoi_level("01") == "state"
-    assert usdm.aoi_level("AL") == "state"
-    assert usdm.aoi_level("al") == "state"
-    assert usdm.aoi_level(1001) == "county"
-    assert usdm.aoi_level("1001") == "county"
-    assert usdm.aoi_level("01001") == "county"
-    assert usdm.aoi_level("us") == "national"
-    assert usdm.aoi_level("US") == "national"
-    assert usdm.aoi_level("CONUS") == "national"
-    assert usdm.aoi_level("conus") == "national"
-    assert usdm.aoi_level("total") == "national"
-    assert usdm.aoi_level("TOTAL") == "national"
+def test_geography_level():
+    assert usdm.geography_level(1) == "state"
+    assert usdm.geography_level("01") == "state"
+    assert usdm.geography_level("AL") == "state"
+    assert usdm.geography_level("al") == "state"
+    assert usdm.geography_level(1001) == "county"
+    assert usdm.geography_level("1001") == "county"
+    assert usdm.geography_level("01001") == "county"
+    assert usdm.geography_level("us") == "national"
+    assert usdm.geography_level("US") == "national"
+    assert usdm.geography_level("CONUS") == "national"
+    assert usdm.geography_level("conus") == "national"
+    assert usdm.geography_level("total") == "national"
+    assert usdm.geography_level("TOTAL") == "national"
     with pytest.raises(ValueError):
-        usdm.aoi_level("invalid_aoi")
+        usdm.geography_level("invalid_geography")
 
 def test_helper():
     result = usdm.USDM.a_helper_function()
     assert result == 'this is a helper function'
 
 def test_get_comp_stats():
-    drought_object = usdm.USDM(aoi = "us", time_period = 2020)
+    drought_object = usdm.USDM(geography = "us", time_period = 2020)
     result = drought_object.get_comp_stats()
     assert result == 'comp stats for TOTAL'
 
+def test_get_weeks_in_drought(mocker):
+    # Mock the requests.get call to return a custom response
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
 
+    mock_response.json.return_value = [
+    {'fips': '01003',
+    'startDate': '2023-09-12T00:00:00',
+    'endDate': '2023-11-14T00:00:00',
+    'consecutiveWeeks': 10,
+    'state': 'AL',
+    'county': 'Baldwin County'},
+    {'fips': '01007',
+    'startDate': '2023-11-14T00:00:00',
+    'endDate': '2023-12-26T00:00:00',
+    'consecutiveWeeks': 7,
+    'state': 'AL',
+    'county': 'Bibb County'},
+    {'fips': '01009',
+    'startDate': '2023-10-31T00:00:00',
+    'endDate': '2023-12-26T00:00:00',
+    'consecutiveWeeks': 9,
+    'state': 'AL',
+    'county': 'Blount County'},
+    {'fips': '01013',
+    'startDate': '2023-10-24T00:00:00',
+    'endDate': '2023-11-14T00:00:00',
+    'consecutiveWeeks': 4,
+    'state': 'AL',
+    'county': 'Butler County'}
+    ]
 
+    mocker.patch("requests.get", return_value=mock_response)
+
+    # Create a USDM object
+    drought_object = usdm.USDM(geography="AL", time_period=2023)
+
+    # Call the get_weeks_in_drought method
+    result_df = drought_object.get_weeks_in_drought(3)
+
+    # Check the result
+    assert not result_df.empty
+    assert "D3_ConsecutiveWeeks" in result_df.columns
+    assert "QueryStartDate" in result_df.columns
+    assert "QueryEndDate" in result_df.columns
+    assert "county" in result_df.columns
+    assert "state" in result_df.columns
+    assert result_df.state.unique() == ["AL"]
+ 
+
+# %%
