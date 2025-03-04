@@ -326,7 +326,7 @@ class USDM:
         # paste the components specific to the variable together
         query.extend(
            [
-              f"{self.url}{area}Get{"DroughtSeverityStatisticsBy"*(s != "DSCI")}{s}?aoi={aoi}&startdate={self.start_date}&enddate={self.end_date}&statisticsType={stat_type}"
+              f'{self.url}{area}Get{"DroughtSeverityStatisticsBy"*(s != "DSCI")}{s}?aoi={aoi}&startdate={self.start_date}&enddate={self.end_date}&statisticsType={stat_type}'
               for s in stat
            ]
         )
