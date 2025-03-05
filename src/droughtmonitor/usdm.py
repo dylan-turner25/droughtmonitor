@@ -281,11 +281,7 @@ class USDM:
         self.end_date = cleaned_dates[1]    
         self.url = url
 
-    @staticmethod
-    def a_helper_function():
-      result = "this is a helper function"
-      return (result)
-    
+
     # methods to access each of three main APIs in the USDM
     def get_comp_stats(self, stat=["Area", "AreaPercent", "Population","PopulationPercent","DSCI"]):
         
