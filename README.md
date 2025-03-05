@@ -9,9 +9,12 @@
 WIP](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#WIP)
 -----
 
+
 ## Table of Contents
 - [About](#about)
-The `droughtmonitor` package serves as an API wrapper for U.S. Drought Monitor. 
+The `droughtmonitor` package serves as an unofficial API wrapper for [U.S. Drought Monitor](https://droughtmonitor.unl.edu/). 
+
+**Disclaimer** This product uses data from the U.S. Drought Monitor API, but is not endorsed by or affiliated with U.S. Drought Monitor or the Federal Government. 
 
 - [Installation](#installation)
 - [Usage](#usage)
@@ -19,6 +22,7 @@ The `droughtmonitor` package serves as an API wrapper for U.S. Drought Monitor.
 
 ## Installation
 Currently, `droughtmonitor` can be installed directly from GitHub. The drought monitor API does not utilize API keys meaning no further setup is required. 
+
 ```console
 # To install directly from GitHub
 pip install git+https://github.com/dylan-turner25/droughtmonitor
@@ -28,7 +32,7 @@ pip install git+https://github.com/dylan-turner25/droughtmonitor
 
 Usage of the `droughtmonitor` package starts by creating an object of the class `USDM` which is done by specifying a geographic location (`geography`) and time period (`time_period`).
 
-```console
+```python
 # import the usdm module from drought monitor
 from droughtmonitor import usdm
 
@@ -41,9 +45,9 @@ drought = usdm.USDM(geography = "conus", time_period=["1/1/2020", "1/31/2020"])
 ```
 
 ### Weeks in Drought
-Once an object of the `USDM` class is created, the `get_weeks_in_drought` method can be used to obtain the number of weeks that the specified geography was at a specified drought level. An option `drought_threshold` parameter can be specified as one of `[0,1,2,3,4]` corresponding to the drought levels used by U.S. Drought Monitor (default is to return measures for all drought levels in distinct columns). Another optional `stat` parameter can be specified as either `"consecutive"` or `"nonconsecutive"` to specify if the number of weeks at the specified drought level need to be consecutive or not. Note that U.S. Drought Monitor only produces weeks at drought measures at the county level, meaning if a higher level geography is specified, the returned data will be at the county level for all counties within the specified geography. 
+Once an object of the `USDM` class is created, the `get_weeks_in_drought` method can be used to obtain the number of weeks that the specified geography was at a specified drought level. An optional `drought_threshold` parameter can be specified as one of `[0,1,2,3,4]` corresponding to the drought levels used by U.S. Drought Monitor (default is to return measures for all drought levels in distinct columns). Another optional `stat` parameter can be specified as either `"consecutive"` or `"nonconsecutive"` to specify if the number of weeks at the specified drought level needs to be consecutive or not. Note that U.S. Drought Monitor only produces weeks at drought measures at the county level, meaning if a higher level geography is specified, the returned data will be at the county level for all counties within the specified geography. 
 
-```console
+```python
 
 # create drought object for California during 2021 using the state fips code
 drought = usdm.USDM(geography = 6 , time_period=2021)
@@ -60,10 +64,30 @@ wid.head()
 wid = drought.get_weeks_in_drought()
 wid.head()
 
-
 ```
 
 ### Comprehensive Statistics
+The `get_comp_stats` method can be used to return several different statistics for each drought level for a specified geography and time period. The argument `stat` controls which statistic is returned and can be one of `["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"]` (not case sensitive) which correspond to the total area, percentage of an area, the total population, percentage of the population, and the [drought severity coverage index](https://droughtmonitor.unl.edu/About/AbouttheData/DSCI.aspx). Unlike the weeks in drought data, comprehensive statistics are returned for the geographic level specified as opposed to returning county-level data for the specified geography.
+
+```python
+
+# create drought object for a single county from 2000 to 2024 using county fips code
+drought = usdm.USDM(geography = "01001" , time_period=list(range(2000,2024)))
+
+# get the percentage of the county that was in each drought level 
+# for each week in the specified time period
+cs = drought.get_comp_stats(stat = "AreaPercent")
+cs.head()
+
+# create drought object for california in 2024
+drought = usdm.USDM(geography = "CA" , time_period=2024)
+
+# get the total population subject to each drought level for 
+# every week in 2024
+cs = drought.get_comp_stats(stat = "Population")
+cs.head()
+
+```
 
 
 
