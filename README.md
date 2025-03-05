@@ -67,7 +67,7 @@ wid.head()
 ```
 
 ### Comprehensive Statistics
-The `get_comp_stats` method can be used to return several different statistics for each drought level for a specified geography and time period. The argument `stat` controls which statistic is returned and can be one of `["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"]` (not case sensitive) which correspond to the total area, percentage of an area, the total population, percentage of the population, and the [drought severity coverage index](https://droughtmonitor.unl.edu/About/AbouttheData/DSCI.aspx). Unlike the weeks in drought data, comprehensive statistics are returned for the geographic level specified as opposed to returning county-level data for the specified geography.
+The `get_comp_stats` method can be used to return several different statistics for each drought level for a specified geography and time period. The argument `stat` controls which statistic is returned and can be one of `["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"]` (not case sensitive) which correspond to the total area, percentage of an area, the total population, percentage of the population, and the [drought severity coverage index](https://droughtmonitor.unl.edu/About/AbouttheData/DSCI.aspx). The default behavior is to return the specified statistic for all drought levels (in sperate columns). If statistics for only one or a few drought threshold are desired, this can be achieved by specifying the `drought_threshold` parameter with a single integer or list of integers out of `[0,1,2,3,4]`.Unlike the weeks in drought data, comprehensive statistics are returned for the geographic level specified as opposed to returning county-level data for the specified geography.
 
 ```python
 
@@ -85,6 +85,10 @@ drought = usdm.USDM(geography = "CA" , time_period=2024)
 # get the total population subject to each drought level for 
 # every week in 2024
 cs = drought.get_comp_stats(stat = "Population")
+cs.head()
+
+# return only the area under D2 level drought
+cs = drought.get_comp_stats(stat = "Area", drought_threshold = 2)
 cs.head()
 
 ```

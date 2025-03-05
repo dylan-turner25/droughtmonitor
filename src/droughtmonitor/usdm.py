@@ -241,15 +241,15 @@ def rename_drought_columns(query, names):
 
     cols_to_change = ["none", "d0", "d1", "d2", "d3", "d4"]
 
-    if "GetDroughtSeverityStatisticsByArea?" in query:
+    if "ByArea?" in query:
         label = "Area"
-    if "GetDroughtSeverityStatisticsByAreaPercent?" in query:
+    if "AreaPercent?" in query:
         label = "AreaPercent"
-    if "GetDroughtSeverityStatisticsByPopulation?" in query:
+    if "Population?" in query:
         label = "Population"
-    if "GetDroughtSeverityStatisticsByPopulationPercent?" in query:
+    if "PopulationPercent?" in query:
         label = "PopulationPercent"
-    if "GetDSCI?" in query:
+    if "DSCI?" in query:
         label = "DSCI"
 
     for c in cols_to_change:
@@ -283,8 +283,19 @@ class USDM:
 
 
     # methods to access each of three main APIs in the USDM
-    def get_comp_stats(self, stat=["Area", "AreaPercent", "Population","PopulationPercent","DSCI"]):
+    def get_comp_stats(self, stat=["Area", "AreaPercent", "Population","PopulationPercent","DSCI"], 
+                       drought_threshold = [0,1,2,3,4], threshold_range = None):
         
+        # might need to type check drought_threshold if it is specifed for
+        # stats that aren't expressed as a percentage
+
+        # typ check drought_threshold
+        if isinstance(drought_threshold, str):
+           raise ValueError("drought_threshold must be a list of integers")
+        if isinstance(drought_threshold, int):
+            drought_threshold = [drought_threshold]
+        
+
         # define area based on geography level
         if geography_level(self.geography) == "national":
             area = "USStatistics/"
@@ -293,7 +304,7 @@ class USDM:
         if geography_level(self.geography) == "county":
             area = "CountyStatistics/"  
 
-        # clean stat input
+        # clean stat input (put it in a list of a single string was input)
         if isinstance(stat, str):
             stat = [stat]
 
@@ -319,10 +330,19 @@ class USDM:
         else:
             aoi = self.geography
 
+
+        # construct portion of the query related to min/max thresholds
+        if threshold_range is not None:
+            stat_endpoint = "BasicStatisticsBy"
+            threshold_query = f"&dx={drought_threshold[0]}&DxLevelThresholdFrom={min(threshold_range)}&DxLevelThresholdTo={max(threshold_range)}"
+        else:
+            threshold_query = ""
+            stat_endpoint = "DroughtSeverityStatisticsBy"
+
         # paste the components specific to the variable together
         query.extend(
            [
-              f'{self.url}{area}Get{"DroughtSeverityStatisticsBy"*(s != "DSCI")}{s}?aoi={aoi}&startdate={self.start_date}&enddate={self.end_date}&statisticsType={stat_type}'
+              f'{self.url}{area}Get{stat_endpoint*(s != "DSCI")}{s}?aoi={aoi}{threshold_query}&startdate={self.start_date}&enddate={self.end_date}&statisticsType={stat_type}'
               for s in stat
            ]
         )
@@ -371,9 +391,16 @@ class USDM:
         date_columns = [c for c in result_df.columns if "Date" in c]
         for c in date_columns:
             result_df[c] = pd.to_datetime(result_df[c]).dt.date
-      
+
+        # remove any columns not defined by the drought threshold
+        # if drought threshold was defined. 
+        if drought_threshold is not None:
+            for d in range(5):
+              if d not in drought_threshold:
+                result_df = result_df[[c for c in result_df.columns if f"D{d}" not in c]]
+        
         return result_df
-       
+
     def get_weeks_in_drought(self, drought_threshold=[0, 1, 2, 3, 4],
                              stat=["consecutive", "nonconsecutive"]):
 
@@ -465,3 +492,5 @@ class USDM:
         result = "return stats by threshold for " + str(self.start_date)
         return result
 
+
+# %%
