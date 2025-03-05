@@ -55,12 +55,6 @@ def test_geography_level():
         usdm.geography_level("invalid_geography")
 
 
-def test_helper():
-    result = usdm.USDM.a_helper_function()
-    assert result == 'this is a helper function'
-
-
-
 def test_get_weeks_in_drought(mocker):
     # Mock the requests.get call to return a custom response
     mock_response = mocker.Mock()
@@ -119,7 +113,7 @@ def test_get_weeks_in_drought(mocker):
     assert result_df.state.unique() == ["AL"]
 
 
-    def test_get_comp_stats(mocker):
+def test_get_comp_stats(mocker):
         # Mock the requests.get call to return a custom response
         mock_response = mocker.Mock()
         mock_response.status_code = 200
@@ -182,3 +176,5 @@ def test_get_weeks_in_drought(mocker):
         assert "D4_Area" in result_df.columns
         assert "mapStartDate" in result_df.columns
         assert "mapEndDate" in result_df.columns
+
+
