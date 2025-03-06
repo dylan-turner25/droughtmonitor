@@ -30,7 +30,7 @@ pip install git+https://github.com/dylan-turner25/droughtmonitor
 
 ## Usage
 
-Usage of the `droughtmonitor` package starts by creating an object of the class `USDM` which is done by specifying a geographic location (`geography`) and time period (`time_period`).
+Usage of the `droughtmonitor` package starts by creating an object of the class `USDM` which is done by specifying a geographic location (`geography`) and time period (`time_period`). The geography can take the form of `"us"` for all of the United State, `"conus"` for the continental United States, a fips code or two letter abbreviation for a single state (ex: `6`,`"06`,`"CA"`, `"ca"` all return data for California), or a fips code for a single county (ex: `1001`,`"01001"`).
 
 ```python
 # import the usdm module from drought monitor

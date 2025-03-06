@@ -178,3 +178,44 @@ def test_get_comp_stats(mocker):
         assert "mapEndDate" in result_df.columns
 
 
+        def test_clean_stat():
+          # Test with a single string input
+          assert usdm.clean_stat("area") == ["Area"]
+          assert usdm.clean_stat("percent") == ["Percent"]
+          assert usdm.clean_stat("population") == ["Population"]
+          assert usdm.clean_stat("dsci") == ["DSCI"]
+          assert usdm.clean_stat("nonconsecutive") == ["NonConsecutiveStatisticsCounty"]
+          assert usdm.clean_stat("consecutive") == ["ConsecutiveWeeksCounty"]
+
+          # Test with a list of strings
+          assert usdm.clean_stat(["area", "percent", "population", "dsci", "nonconsecutive", "consecutive"]) == [
+            "Area", "Percent", "Population", "DSCI", "NonConsecutiveStatisticsCounty", "ConsecutiveWeeksCounty"
+          ]
+
+          # Test with mixed case input
+          assert usdm.clean_stat("ArEa") == ["Area"]
+
+          # Test with invalid input
+          with pytest.raises(AttributeError):
+            usdm.clean_stat(123)
+          with pytest.raises(AttributeError):
+            usdm.clean_stat(None)
+
+
+        def test_clean_drought_threshold():
+            # Test with a single integer input
+            assert usdm.clean_drought_threshold(3) == [3]
+
+            # Test with a list of integers
+            assert usdm.clean_drought_threshold([0, 1, 2, 3, 4]) == [0, 1, 2, 3, 4]
+
+            # Test with an empty list
+            assert usdm.clean_drought_threshold([]) == []
+
+            # Test with invalid input (string)
+            with pytest.raises(ValueError):
+            usdm.clean_drought_threshold("invalid")
+
+            # Test with invalid input (None)
+            with pytest.raises(ValueError):
+            usdm.clean_drought_threshold(None)

@@ -4,7 +4,6 @@ import pandas as pd
 from datetime import datetime
 import requests
 
-
 def check_status_code(status_code):
     """
     Checks if the provided HTTP status code is 200 (OK).
@@ -17,7 +16,6 @@ def check_status_code(status_code):
     """
     if status_code != 200:
         raise Exception(f"HTTP status code: {status_code}")
-
 
 def load_fips_codes():
     """
@@ -44,7 +42,6 @@ def load_fips_codes():
     fips_codes['full_fips'] = fips_codes['state_code']+fips_codes['county_code']
 
     return fips_codes
-
 
 def valid_geography(geography, geography_type=None,
                     fips_codes=load_fips_codes()):
@@ -101,7 +98,6 @@ def valid_geography(geography, geography_type=None,
             else:
               raise ValueError("Invalid area of interest specified.")
 
-
 def geography_level(geography, geography_type=None, 
                     fips_codes=load_fips_codes()):
   """
@@ -139,7 +135,6 @@ def geography_level(geography, geography_type=None,
     # check to see if the area of interest is a county
     if geography in county_fips:
         return "county"
-
 
 def determine_date_type(date_list):
   """
@@ -197,7 +192,6 @@ def determine_date_type(date_list):
   else:
     return "invalid"
 
-
 def valid_dates(time_period):
  
   # determine date type 
@@ -236,8 +230,7 @@ def valid_dates(time_period):
   if date_type == "mixed" or date_type == "invalid":
     raise ValueError("The values entered for the time_period parameter are not valid. Please enter a list of years, a list of two dates (i.e. start and end dates)")
 
-
-def rename_drought_columns(query, names):
+def rename_comp_stat_columns(query, names):
 
     cols_to_change = ["none", "d0", "d1", "d2", "d3", "d4"]
 
@@ -256,7 +249,6 @@ def rename_drought_columns(query, names):
         names = [name.replace(c, f"{c.upper()}_{label}") for name in names]
     return names
 
-
 def convert_state_code(state, fips_codes=load_fips_codes()):
     if state in fips_codes['state'].unique():
         match = fips_codes.loc[fips_codes['state'] == state, 'state_code'].values[0]
@@ -267,6 +259,31 @@ def convert_state_code(state, fips_codes=load_fips_codes()):
     else:
         raise ValueError(f"Unable to convert {state}")
 
+def clean_drought_threshold(drought_threshold):
+        # typ check drought_threshold
+        if isinstance(drought_threshold, str):
+           raise ValueError("drought_threshold must be a list of integers")
+        if isinstance(drought_threshold, int):
+            drought_threshold = [drought_threshold]
+        return drought_threshold
+  
+def clean_stat(stat):
+        # clean stat input (put it in a list of a single string was input)
+        if isinstance(stat, str):
+            stat = [stat]
+
+        stat = [
+            s.lower()
+            .replace('area', "Area")
+            .replace('percent', "Percent")
+            .replace('population', "Population")
+            .replace('dsci', "DSCI")
+            .replace("nonconsecutive", "NonConsecutiveStatisticsCounty")
+            .replace("consecutive", "ConsecutiveWeeksCounty")
+            for s in stat
+        ]
+
+        return stat
 
 # a class USDM that contains the primary arguments for the data
 class USDM:
@@ -281,7 +298,6 @@ class USDM:
         self.end_date = cleaned_dates[1]    
         self.url = url
 
-
     # methods to access each of three main APIs in the USDM
     def get_comp_stats(self, stat=["Area", "AreaPercent", "Population","PopulationPercent","DSCI"], 
                        drought_threshold = [0,1,2,3,4], threshold_range = None):
@@ -289,34 +305,19 @@ class USDM:
         # might need to type check drought_threshold if it is specifed for
         # stats that aren't expressed as a percentage
 
-        # typ check drought_threshold
-        if isinstance(drought_threshold, str):
-           raise ValueError("drought_threshold must be a list of integers")
-        if isinstance(drought_threshold, int):
-            drought_threshold = [drought_threshold]
+        # clean drought threshold argument and type check it
+        drought_threshold = clean_drought_threshold(drought_threshold)
         
+        # clean stat input and type check it
+        stat = clean_stat(stat)
 
-        # define area based on geography level
-        if geography_level(self.geography) == "national":
-            area = "USStatistics/"
-        if geography_level(self.geography) == "state":
-            area = "StateStatistics/"
-        if geography_level(self.geography) == "county":
-            area = "CountyStatistics/"  
+        # Define area based on geography level
+        area = {
+            "national": "USStatistics/",
+            "state": "StateStatistics/",
+            "county": "CountyStatistics/"
+        }.get(geography_level(self.geography))
 
-        # clean stat input (put it in a list of a single string was input)
-        if isinstance(stat, str):
-            stat = [stat]
-
-        stat = [
-            s.lower()
-            .replace('area', "Area")
-            .replace('percent', "Percent")
-            .replace('population', "Population")
-            .replace('dsci', "DSCI")
-            for s in stat
-        ]
-      
         # initialize a vector to store queries
         query = []
 
@@ -324,12 +325,11 @@ class USDM:
         stat_type = 1
 
         # states, for whatever reason need to be entered as fips 
-        # whereas other endpoints require two-leter abbreviation
+        # whereas other endpoints require two-letter abbreviation
         if area == "StateStatistics/":
             aoi = convert_state_code(self.geography)
         else:
             aoi = self.geography
-
 
         # construct portion of the query related to min/max thresholds
         if threshold_range is not None:
@@ -347,7 +347,7 @@ class USDM:
            ]
         )
 
-        # initialize data as a ldict
+        # initialize data as a dict
         data_dict = {}
 
         # initialize a index variable
@@ -371,7 +371,7 @@ class USDM:
             # add data to data_list dictionary
             data_dict[index] = pd.DataFrame(data)
 
-            data_dict[index].columns = rename_drought_columns(query=q, names=data_dict[index].columns)
+            data_dict[index].columns = rename_comp_stat_columns(query=q, names=data_dict[index].columns)
 
             # rename columns
             data_dict[index].rename(columns={
@@ -404,23 +404,17 @@ class USDM:
     def get_weeks_in_drought(self, drought_threshold=[0, 1, 2, 3, 4],
                              stat=["consecutive", "nonconsecutive"]):
 
-        # if a single drought threshold is provided as an integer,
-        # convert it  to a list
-        if isinstance(drought_threshold, int):
-            drought_threshold = [drought_threshold]
+        # clean drought threshold argument and type check it
+        drought_threshold = clean_drought_threshold(drought_threshold)
+
+        # clean stat input and type check it    
+        stat = clean_stat(stat)     
 
         # define area for weeds in drought 
         area = "ConsecutiveNonConsecutiveStatistics/"
         
         # initialize a list to store queries
         query = []
-
-        # replace "consecutive" and "nonconsecutive" with
-        # "ConsecutiveWeeksCounty" and "NonConsecutiveStatisticsCounty"
-        if isinstance(stat, str):
-            stat = [stat]
-
-        stat = [s.lower().replace("nonconsecutive", "NonConsecutiveStatisticsCounty").replace("consecutive", "ConsecutiveWeeksCounty") for s in stat]
 
         # iterate over stat_type and drought_threshold to create a list of queries
         query.extend(
@@ -491,6 +485,3 @@ class USDM:
     def get_stats_by_threshold(self):
         result = "return stats by threshold for " + str(self.start_date)
         return result
-
-
-# %%
