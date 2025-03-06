@@ -214,8 +214,8 @@ def test_get_comp_stats(mocker):
 
             # Test with invalid input (string)
             with pytest.raises(ValueError):
-            usdm.clean_drought_threshold("invalid")
+                usdm.clean_drought_threshold("invalid")
 
             # Test with invalid input (None)
             with pytest.raises(ValueError):
-            usdm.clean_drought_threshold(None)
+                usdm.clean_drought_threshold(None)
