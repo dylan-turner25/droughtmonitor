@@ -1,6 +1,7 @@
 #%%
 import os
 import pandas as pd
+import geopandas as gpd
 from datetime import datetime
 import requests
 
@@ -224,7 +225,8 @@ def valid_dates(time_period):
         pass
 
     else:
-      raise ValueError("A time_period entered as dates should be a list of exactly two dates specifying the start and end dates.")
+      return(time_period.replace("-", "/"))
+    
     return start_date, end_date
  
   if date_type == "mixed" or date_type == "invalid":
@@ -285,6 +287,43 @@ def clean_stat(stat):
 
         return stat
 
+def get_closest_mapdate(date):
+      
+      date = valid_dates(date)
+      
+      current_year = datetime.now().year
+      
+      q = f"https://usdmdataservices.unl.edu/api/USStatistics/GetDroughtSeverityStatisticsByArea?aoi=TOTAL&startdate=01/01/2000&enddate=12/31/{current_year}&statisticsType=1"
+      
+      headers = {'Accept': 'application/json'}
+
+      # get the data
+      response = requests.get(q, headers=headers)
+      
+      # check status code before continuing
+      check_status_code(response.status_code)
+
+      # extract the data as a list
+      map_dates = pd.DataFrame(response.json())['mapDate']
+
+      # ocnvert map_dates to datetime
+      map_dates = pd.to_datetime(map_dates)
+
+      # determine which date in map_dates is closest to the date provided
+      closest_date = map_dates.iloc[(map_dates - pd.to_datetime(date)).abs().argsort()[:1]]
+
+      # convert closest_date from series to string
+      closest_date = closest_date.to_string(index=False)
+
+      # convert closest_date from string to datetime
+      closest_date = pd.to_datetime(closest_date)
+
+      # convert to format used in USDM url
+      closest_date = closest_date.strftime("%Y%m%d")
+      
+      return closest_date
+
+
 # a class USDM that contains the primary arguments for the data
 class USDM:
     def __init__(self, geography=None, geography_type=None,
@@ -293,11 +332,11 @@ class USDM:
         self.geography = valid_geography(geography, geography_type)
 
         # clean dates
-        cleaned_dates = valid_dates(time_period)
-        self.start_date = cleaned_dates[0]
-        self.end_date = cleaned_dates[1]    
+        self.cleaned_dates = valid_dates(time_period)
+        self.start_date = self.cleaned_dates[0]
+        self.end_date = self.cleaned_dates[1]    
         self.url = url
-
+       
     # methods to access each of three main APIs in the USDM
     def get_comp_stats(self, stat=["Area", "AreaPercent", "Population","PopulationPercent","DSCI"], 
                        drought_threshold = [0,1,2,3,4], threshold_range = None):
@@ -401,6 +440,7 @@ class USDM:
         
         return result_df
 
+
     def get_weeks_in_drought(self, drought_threshold=[0, 1, 2, 3, 4],
                              stat=["consecutive", "nonconsecutive"]):
 
@@ -482,6 +522,28 @@ class USDM:
       
         return result_df
 
-    def get_stats_by_threshold(self):
-        result = "return stats by threshold for " + str(self.start_date)
-        return result
+    def get_spatial_data(self, format = "df"):
+        
+        if self.geography not in ["TOTAL", "CONUS"]:
+            print("The get_spatial_data method is only applicable to national data. Defaulting to returning data for the whole United States.")
+        
+        if isinstance(self.cleaned_dates, list) and len(self.cleaned_dates) != 1:
+            raise ValueError("The time_period parameter must be a single date when using the get_spatial_data method of the format '%m/%d/%Y'. Example: 'time_period = '6/5/2016'")
+
+        map_date = get_closest_mapdate(self.cleaned_dates)
+
+        # print a user message
+        print(f"Retrieving data for map dated: {map_date[4:6]}/{map_date[6:8]}/{map_date[0:4]}")
+
+        url = f"https://droughtmonitor.unl.edu/data/json/usdm_{map_date}.json"
+        
+        if format == "json":
+            response = requests.get(url)
+            data = response.json()
+            return data
+        
+        if format == "df":
+            data = gpd.read_file(url)
+            return data
+
+# %%

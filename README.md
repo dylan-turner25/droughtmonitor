@@ -93,6 +93,20 @@ cs.head()
 
 ```
 
+### Spatial Data
+```python
+
+# import drought monitor
+from droughtmonitor import usdm
+
+# create a USDM object for the us with a single date as the time period
+drought = usdm.USDM(geography = "us", time_period="1/1/2020")
+
+# return geo-spatial drought data in json format for the map released closest to 1/1/2020
+geo = drought.get_spatial_data(format = "json")
+
+
+```
 
 
 ## License
