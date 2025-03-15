@@ -11,7 +11,8 @@ WIP](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.o
 
 ## Table of Contents
 - [About](#about)
-The `droughtmonitor` package serves as an unofficial API wrapper for [U.S. Drought Monitor](https://droughtmonitor.unl.edu/). 
+
+The `droughtmonitor` package serves as an unofficial API wrapper for [U.S. Drought Monitor](https://droughtmonitor.unl.edu/) and provides a set of tools for making programatic access to the underlying data more accessable. The U.S. Drought Monitor website contains a [landing page](https://droughtmonitor.unl.edu/Data.aspx) for accessing both tabular and spatial data. However, accessing the data through this channel can be tedious for charts, measures, or analysis that need to be frequently updated. Programatic access is possible through the [existing API](https://droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx), but can also be tediuos without prior working knowledge of REST APIs. The `droughtmonitor` package strikes a balance between the two methods as it allows programatic access to enhance reproducability while requireing no additional techincal overhead beyond basic understanding of python. 
 
 **Disclaimer** This product uses data from the U.S. Drought Monitor API, but is not endorsed by or affiliated with U.S. Drought Monitor or the Federal Government. 
 
@@ -121,7 +122,7 @@ Example: retrieving data for a range of dates.
 from droughtmonitor import usdm
 
 # create a USDM object for the us with a single date as the time period
-drought = usdm.USDM(geography = "us", time_period=['1/1/2020'.'1/31/2020'])
+drought = usdm.USDM(geography = "us", time_period=['1/1/2020','1/31/2020'])
 
 # return geo-spatial drought data in data frame format
 geo_data = drought.get_spatial_data(format = "df")
