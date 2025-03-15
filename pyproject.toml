@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "droughtmonitor"
+dynamic = ["version"]
+description = 'A python-based API wrapper for U.S. Drought Monitor'
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = ["drought","drought monitor"]
+authors = [
+  { name = "Dylan Turner", email = "dylan.turner3@outlook.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+"pandas>=2.2.3", 
+"pytest>=8.3.4",
+"requests>=2.32.3",
+"mocker>=1.1.1",
+"geopandas>=1.0.1"
+]
+
+[project.urls]
+Documentation = "https://github.com/dylan-turner25/droughtmonitor#readme"
+Issues = "https://github.com/dylan-turner25/droughtmonitor/issues"
+Source = "https://github.com/dylan-turner25/droughtmonitor"
+
+
+[tool.hatch.version]
+path = "src/droughtmonitor/__about__.py"
