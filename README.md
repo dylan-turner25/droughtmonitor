@@ -1,7 +1,7 @@
 # droughtmonitor
 
-[![PyPI - Version](https://img.shields.io/pypi/v/droughtmonitor.svg)](https://test.pypi.org/project/droughtmonitor)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/droughtmonitor.svg)](https://test.pypi.org/project/droughtmonitor)
+[![PyPI - Version](https://img.shields.io/pypi/v/droughtmonitor.svg)](https://pypi.org/project/droughtmonitor)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/droughtmonitor.svg)](https://pypi.org/project/droughtmonitor)
 [![Python package](https://github.com/dylan-turner25/droughtmonitor/actions/workflows/python-package.yml/badge.svg)](https://github.com/dylan-turner25/droughtmonitor/actions/workflows/python-package.yml)
 [![codecov](https://codecov.io/gh/dylan-turner25/droughtmonitor/graph/badge.svg?token=qJ37dsQJPV)](https://codecov.io/gh/dylan-turner25/droughtmonitor)
 [![Project Status:
@@ -26,7 +26,7 @@ Currently, `droughtmonitor` can be installed from PyPI using pip. The drought mo
 
 ```console
 # install using pip
-pip install -i https://test.pypi.org/simple/ droughtmonitor
+pip install droughtmonitor
 ```
 
 ## Usage
