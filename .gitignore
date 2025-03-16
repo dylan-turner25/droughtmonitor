@@ -3,4 +3,4 @@ bin
 lib
 share
 dm_env
-dist
+dist/
