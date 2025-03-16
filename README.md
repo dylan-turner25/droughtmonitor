@@ -1,11 +1,8 @@
 # droughtmonitor
 
-[![PyPI - Version](https://img.shields.io/pypi/v/droughtmonitor.svg)](https://pypi.org/project/droughtmonitor)
-
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/droughtmonitor.svg)](https://pypi.org/project/droughtmonitor)
-
+[![PyPI - Version](https://img.shields.io/pypi/v/droughtmonitor.svg)](https://test.pypi.org/project/droughtmonitor)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/droughtmonitor.svg)](https://test.pypi.org/project/droughtmonitor)
 [![Python package](https://github.com/dylan-turner25/droughtmonitor/actions/workflows/python-package.yml/badge.svg)](https://github.com/dylan-turner25/droughtmonitor/actions/workflows/python-package.yml)
-
 [![codecov](https://codecov.io/gh/dylan-turner25/droughtmonitor/graph/badge.svg?token=qJ37dsQJPV)](https://codecov.io/gh/dylan-turner25/droughtmonitor)
 [![Project Status:
 WIP](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#WIP)
@@ -28,8 +25,8 @@ The `droughtmonitor` package serves as an unofficial API wrapper for [U.S. Droug
 Currently, `droughtmonitor` can be installed directly from GitHub. The drought monitor API does not utilize API keys meaning no further setup is required. 
 
 ```console
-# To install directly from GitHub
-pip install git+https://github.com/dylan-turner25/droughtmonitor
+# install using pip
+pip install -i https://test.pypi.org/simple/ droughtmonitor
 ```
 
 ## Usage
