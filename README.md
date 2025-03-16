@@ -22,7 +22,7 @@ The `droughtmonitor` package serves as an unofficial API wrapper for [U.S. Droug
 
 
 ## Installation
-Currently, `droughtmonitor` can be installed directly from GitHub. The drought monitor API does not utilize API keys meaning no further setup is required. 
+Currently, `droughtmonitor` can be installed from PyPI using pip. The drought monitor API does not utilize API keys meaning no further setup is required. 
 
 ```console
 # install using pip
