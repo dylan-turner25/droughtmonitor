@@ -10,8 +10,10 @@ name: Upload Python Package
 
 on:
   push:
+    branches:
+      - main  
     tags:
-      - v*.*.*  
+      - v*.*.* 
 
 permissions:
   contents: read
