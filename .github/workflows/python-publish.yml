@@ -10,8 +10,10 @@ name: Upload Python Package
 
 on:
   push:
-    paths:
-      - "pyproject.toml"
+    branches:
+      - main  # Or your main development branch
+    tags:
+      - v*.* 
 
 permissions:
   contents: read
