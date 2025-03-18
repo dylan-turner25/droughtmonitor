@@ -10,10 +10,10 @@ from functools import lru_cache
 def check_status_code(status_code):
     """
     Checks if the provided HTTP status code is 200 (OK).
-    
+   
     Args:
     status_code (int): The HTTP status code to check.
-    
+   
     Exception: If the status code is not 200, an exception 
     is raised with the status code.
     """
@@ -319,6 +319,7 @@ def convert_state_code(state, fips_codes=load_fips_codes()):
     else:
         raise ValueError(f"Unable to convert {state}")
 
+
 def clean_drought_threshold(drought_threshold):
         """
         Cleans and validates the drought threshold input.
@@ -338,7 +339,7 @@ def clean_drought_threshold(drought_threshold):
         
         # typ check drought_threshold
         if isinstance(drought_threshold, str):
-           raise ValueError("drought_threshold must be a list of integers")
+            raise ValueError("drought_threshold must be a list of integers")
         if isinstance(drought_threshold, int):
             drought_threshold = [drought_threshold]
         return drought_threshold
@@ -611,7 +612,6 @@ class USDM:
         
         return result_df
 
-
     def get_weeks_in_drought(self, drought_threshold=[0, 1, 2, 3, 4], stat=["consecutive", "nonconsecutive"]):
         """
         Retrieve the number of weeks in drought for specified drought levels and statistics.
@@ -663,42 +663,42 @@ class USDM:
         # loop over each individual url in the query vector
         for q in query:
 
-          # header specifying data should be returned in json format
-          headers = {'Accept': 'application/json'}
+            # header specifying data should be returned in json format
+            headers = {'Accept': 'application/json'}
 
-          # get the data
-          response = requests.get(q, headers=headers)
-          
-          # check status code before continuing
-          check_status_code(response.status_code)
+            # get the data
+            response = requests.get(q, headers=headers)
+            
+            # check status code before continuing
+            check_status_code(response.status_code)
 
-          # extract the data as a list
-          data = response.json()
+            # extract the data as a list
+            data = response.json()
 
-          # add data to data_list dictionary
-          data_dict[index] = pd.DataFrame(data)
+            # add data to data_list dictionary
+            data_dict[index] = pd.DataFrame(data)
 
-          # get the drought level from the query
-          drought_level = None
-          for d in range(5):
-            if f"dx={d}" in q:
-              drought_level = f"D{d}"
+            # get the drought level from the query
+            drought_level = None
+            for d in range(5):
+              if f"dx={d}" in q:
+                drought_level = f"D{d}"
 
-          # relabel columns to include drought level
-          data_dict[index].rename(columns={
-              "nonConsecutiveWeeks": f"{drought_level}_NonConsecutiveWeeks",
-              "consecutiveWeeks": f"{drought_level}_ConsecutiveWeeks",
-              "startDate": f"{drought_level}_ConsecutiveWeeksStartDate",
-              "endDate": f"{drought_level}_ConsecutiveWeeksEndDate",
-          }, inplace=True)
+            # relabel columns to include drought level
+            data_dict[index].rename(columns={
+                "nonConsecutiveWeeks": f"{drought_level}_NonConsecutiveWeeks",
+                "consecutiveWeeks": f"{drought_level}_ConsecutiveWeeks",
+                "startDate": f"{drought_level}_ConsecutiveWeeksStartDate",
+                "endDate": f"{drought_level}_ConsecutiveWeeksEndDate",
+            }, inplace=True)
 
-          # advance index
-          index += 1
+            # advance index
+            index += 1
         
         # merge each of the dataframes in the data_list dictionary using a full join
         result_df = data_dict[1]
         for i in range(2, len(data_dict) + 1):
-          result_df = result_df.merge(data_dict[i], how='outer')
+            result_df = result_df.merge(data_dict[i], how='outer')
 
         #add date range to specify the query date range
         result_df['QueryStartDate'] = pd.to_datetime(self.start_date)
@@ -707,10 +707,9 @@ class USDM:
         # remove time of day from date columns
         date_columns = [c for c in result_df.columns if "Date" in c]
         for c in date_columns:
-          result_df[c] = pd.to_datetime(result_df[c]).dt.date
+            result_df[c] = pd.to_datetime(result_df[c]).dt.date
       
         return result_df
-
 
     def get_spatial_data(self, format="df"):
 
@@ -743,7 +742,8 @@ class USDM:
         if len(map_dates) > 1:
             
             # get the full range of dates between the start and end date
-            map_dates = pd.date_range(start=min(self.cleaned_dates), end=max(self.cleaned_dates)).strftime("%m/%d/%Y").tolist()
+            map_dates = pd.date_range(start=min(self.cleaned_dates),
+                                      end=max(self.cleaned_dates)).strftime("%m/%d/%Y").tolist()
             
         # get the closest map date for each date in map_dates, then keep the 
         # unique set to end up with the full range of avaliable map dates that 
