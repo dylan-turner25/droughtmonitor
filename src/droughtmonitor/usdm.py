@@ -5,6 +5,7 @@ import geopandas as gpd
 from datetime import datetime
 import requests
 from functools import lru_cache
+from tqdm import tqdm
 
 
 def check_status_code(status_code):
@@ -101,7 +102,7 @@ def valid_geography(geography, geography_type=None,
                 matching_fips = fips_codes['full_fips'][[int(f) for f in fips_codes['full_fips']].index(int(geography))]
                 return matching_fips
             else:
-              raise ValueError("Invalid area of interest specified.")
+                raise ValueError("Invalid area of interest specified.")
 
 
 def geography_level(geography, geography_type=None, 
@@ -565,7 +566,8 @@ class USDM:
         index = 1
 
         # loop over each individual url in the query vector
-        for q in query:
+        print("Loading comprehensive statistics...")
+        for q in tqdm(query):
 
             # header specifying data should be returned in json format
             headers = {'Accept': 'application/json'}
@@ -661,7 +663,9 @@ class USDM:
         index = 1
 
         # loop over each individual url in the query vector
-        for q in query:
+        print("Loading weeks in drought data...")
+        for q in tqdm(query):
+
 
             # header specifying data should be returned in json format
             headers = {'Accept': 'application/json'}
@@ -754,12 +758,13 @@ class USDM:
         geo_data = {}
 
         # loop over each map date
-        for m in map_dates:
+        prog_bar = tqdm(map_dates)
 
+        for m in prog_bar:
             # print a user message
             m_label = f'{m[4:6]}/{m[6:8]}/{m[0:4]}'
-
-            print(f"Retrieving data for map dated: {m_label}")
+            
+            prog_bar.set_description(f"Retrieving data for map dated: {m_label}")
 
             url = f"https://droughtmonitor.unl.edu/data/json/usdm_{m}.json"
             
