@@ -5,7 +5,7 @@
 [![Python package](https://github.com/dylan-turner25/droughtmonitor/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/dylan-turner25/droughtmonitor/actions/workflows/python-package.yml)
 [![codecov](https://codecov.io/gh/dylan-turner25/droughtmonitor/graph/badge.svg?token=qJ37dsQJPV)](https://codecov.io/gh/dylan-turner25/droughtmonitor)
 [![Project Status:
-WIP](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#WIP)
+WIP](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#active)
 -----
 
 
