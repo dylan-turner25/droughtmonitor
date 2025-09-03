@@ -137,6 +137,6 @@ geo_data = drought.get_spatial_data(format = "df")
 geo_data['12/31/2019']
 ```
 
-## License {#license}
+## License 
 
 `droughtmonitor` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
