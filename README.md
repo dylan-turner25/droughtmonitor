@@ -7,16 +7,13 @@
 -   [About](#about)
 -   [Installation](#installation)
 -   [Usage](#usage)
-    -   [Weeks in Drought](#weeks-in-drought)\
-    -   [Comprehensive Statistics](#comprehensive-statistics)
-    -   [Spatial Data](#spatial-data)
 -   [License](#license)
 
 The `droughtmonitor` package serves as an unofficial API wrapper for [U.S. Drought Monitor](https://droughtmonitor.unl.edu/) and provides a set of tools for making programatic access to the underlying data more accessable. The U.S. Drought Monitor website contains a [landing page](https://droughtmonitor.unl.edu/Data.aspx) for accessing both tabular and spatial data. However, accessing the data through this channel can be tedious for charts, measures, or analysis that need to be frequently updated. Programatic access is possible through the [existing API](https://droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx), but can also be tediuos without prior working knowledge of REST APIs. The `droughtmonitor` package strikes a balance between the two methods as it allows programatic access to enhance reproducability while requireing no additional techincal overhead beyond basic understanding of python.
 
 **Disclaimer** This product uses data from the U.S. Drought Monitor API, but is not endorsed by or affiliated with U.S. Drought Monitor or the Federal Government.
 
-## Installation {#installation}
+## Installation 
 
 Currently, `droughtmonitor` can be installed from PyPI using pip. The drought monitor API does not utilize API keys meaning no further setup is required.
 
@@ -25,8 +22,7 @@ Currently, `droughtmonitor` can be installed from PyPI using pip. The drought mo
 pip install droughtmonitor
 ```
 
-## Usage {#usage}
-
+## Usage 
 Usage of the `droughtmonitor` package starts by creating an object of the class `USDM` which is done by specifying a geographic location (`geography`) and time period (`time_period`). The geography can take the form of `"us"` for all of the United State, `"conus"` for the continental United States, a fips code or two letter abbreviation for a single state (ex: `6`,`"06`,`"CA"`, `"ca"` all return data for California), or a fips code for a single county (ex: `1001`,`"01001"`). An optional `group_by` parameter enables batch processing for multiple geographies: - `group_by="county"`: When geography is a state, retrieves data for all counties in that state - `group_by="state"`: When geography is national ("US"/"CONUS"), retrieves data for all states
 
 ``` python
@@ -46,7 +42,7 @@ drought = usdm.USDM(geography = "CA", group_by="county", time_period=[2020, 2021
 drought = usdm.USDM(geography = "US", group_by="state", time_period=2024)
 ```
 
-### Weeks in Drought {#weeks-in-drought}
+### Weeks in Drought 
 
 Once an object of the `USDM` class is created, the `get_weeks_in_drought` method can be used to obtain the number of weeks that the specified geography was at a specified drought level. An optional `drought_threshold` parameter can be specified as one of `[0,1,2,3,4]` corresponding to the drought levels used by U.S. Drought Monitor (default is to return measures for all drought levels in distinct columns). Another optional `stat` parameter can be specified as either `"consecutive"` or `"nonconsecutive"` to specify if the number of weeks at the specified drought level needs to be consecutive or not.
 
@@ -70,7 +66,7 @@ wid = drought.get_weeks_in_drought()
 wid.head()
 ```
 
-### Comprehensive Statistics {#comprehensive-statistics}
+### Comprehensive Statistics 
 
 The `get_comp_stats` method can be used to return several different statistics for each drought level for a specified geography and time period. The argument `stat` controls which statistic is returned and can be one of `["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"]` (not case sensitive) which correspond to the total area, percentage of an area, the total population, percentage of the population, and the [drought severity coverage index](https://droughtmonitor.unl.edu/About/AbouttheData/DSCI.aspx). The default behavior is to return the specified statistic for all drought levels (in separate columns). If statistics for only one or a few drought threshold are desired, this can be achieved by specifying the `drought_threshold` parameter with a single integer or list of integers out of `[0,1,2,3,4]`.
 
@@ -98,7 +94,7 @@ cs = drought.get_comp_stats(stat = "Area", drought_threshold = 2)
 cs.head()
 ```
 
-### Spatial Data {#spatial-data}
+### Spatial Data 
 
 Spatial data can also be retrieved using `droughtmonitor`. To do so, create a USDM object and then call the `get_spatial_data` method. Spatial data is only avaliable at the national level, meaning `"us"` is the only valid geography for `USDM` when `get_spatial_data` is used. For the `time_period` argument, either a single date or a range of dates can be entered. In the case of a single date, the USDM map that has the closest date to the entered date will be retrieved. In the case of a range of dates being entered, the closest maps to the start and end date will be found, then those maps along with all maps between these dates, will be returned.
 
@@ -136,6 +132,6 @@ geo_data = drought.get_spatial_data(format = "df")
 geo_data['12/31/2019']
 ```
 
-## License {#license}
+## License 
 
 `droughtmonitor` is distributed under the terms of the [MIT](https://spdx.org/licenses/MIT.html) license.
