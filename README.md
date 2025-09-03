@@ -17,7 +17,7 @@ The `droughtmonitor` package serves as an unofficial API wrapper for [U.S. Droug
 
 **Disclaimer** This product uses data from the U.S. Drought Monitor API, but is not endorsed by or affiliated with U.S. Drought Monitor or the Federal Government.
 
-## Installation {#installation}
+## Installation 
 
 Currently, `droughtmonitor` can be installed from PyPI using pip. The drought monitor API does not utilize API keys meaning no further setup is required.
 
@@ -26,11 +26,9 @@ Currently, `droughtmonitor` can be installed from PyPI using pip. The drought mo
 pip install droughtmonitor
 ```
 
-## Usage {#usage}
+## Usage 
 
-Usage of the `droughtmonitor` package starts by creating an object of the class `USDM` which is done by specifying a geographic location (`geography`) and time period (`time_period`). The geography can take the form of `"us"` for all of the United State, `"conus"` for the continental United States, a fips code or two letter abbreviation for a single state (ex: `6`,`"06`,`"CA"`, `"ca"` all return data for California), or a fips code for a single county (ex: `1001`,`"01001"`).
-
-An optional `group_by` parameter enables batch processing for multiple geographies: - `group_by="county"`: When geography is a state, retrieves data for all counties in that state - `group_by="state"`: When geography is national ("US"/"CONUS"), retrieves data for all states
+Usage of the `droughtmonitor` package starts by creating an object of the class `USDM` which is done by specifying a geographic location (`geography`) and time period (`time_period`). The geography can take the form of `"us"` for all of the United State, `"conus"` for the continental United States, a fips code or two letter abbreviation for a single state (ex: `6`,`"06`,`"CA"`, `"ca"` all return data for California), or a fips code for a single county (ex: `1001`,`"01001"`). An optional `group_by` parameter enables batch processing for multiple geographies: - `group_by="county"`: When geography is a state, retrieves data for all counties in that state - `group_by="state"`: When geography is national ("US"/"CONUS"), retrieves data for all states
 
 ``` python
 # import the usdm module from drought monitor
@@ -49,79 +47,11 @@ drought = usdm.USDM(geography = "CA", group_by="county", time_period=[2020, 2021
 drought = usdm.USDM(geography = "US", group_by="state", time_period=2024)
 ```
 
-### Batch Processing with group_by {#batch-processing-with-group_by}
-
-The `group_by` parameter enables efficient batch processing for multiple geographies, eliminating the need to manually loop through counties or states. This feature is particularly useful for large-scale analysis across multiple geographic units.
-
-#### County-Level Batch Processing
-
-When `group_by="county"` is specified with a state geography, data is retrieved for all counties within that state:
-
-``` python
-# Get comprehensive statistics for all counties in California
-drought = usdm.USDM(geography="CA", group_by="county", time_period=[2020, 2021])
-county_data = drought.get_comp_stats(stat=["AreaPercent", "Population"])
-
-# The result includes geographic identifiers for easy analysis
-print(county_data.columns)
-# Includes: county_fips, county_name, state_code, state_name, plus drought data columns
-
-# Get weeks in drought for all Texas counties
-drought = usdm.USDM(geography="TX", group_by="county", time_period=2023)
-weeks_data = drought.get_weeks_in_drought(drought_threshold=[2, 3, 4])
-
-# Analyze drought patterns by county
-print(f"Total counties analyzed: {len(weeks_data)}")
-most_affected = weeks_data.nlargest(5, 'D3_ConsecutiveWeeks')[['county_name', 'D3_ConsecutiveWeeks']]
-```
-
-#### State-Level Batch Processing
-
-When `group_by="state"` is specified with national geography, data is retrieved for all US states:
-
-``` python
-# Get comprehensive statistics for all US states
-drought = usdm.USDM(geography="US", group_by="state", time_period=2024)
-state_data = drought.get_comp_stats(stat=["AreaPercent", "DSCI"])
-
-# The result includes state identifiers
-print(state_data.columns) 
-# Includes: state_code, state_name, plus drought data columns
-
-# Compare drought severity across states
-state_summary = state_data.groupby('state_name')['D2_AreaPercent'].mean().sort_values(ascending=False)
-print("States with highest average D2 drought coverage:")
-print(state_summary.head(10))
-
-# Analyze drought trends for all states
-drought_trends = usdm.USDM(geography="CONUS", group_by="state", time_period=[2020, 2024])
-trends_data = drought_trends.get_weeks_in_drought(drought_threshold=[1, 2, 3, 4])
-```
-
-#### Performance Benefits
-
-The `group_by` parameter provides significant advantages over manual iteration:
-
-``` python
-# Instead of manually looping (slower, more complex):
-# states = ["CA", "TX", "NY", "FL"]  # ... all 50+ states
-# all_data = []
-# for state in states:
-#     drought = usdm.USDM(geography=state, time_period=2024)
-#     data = drought.get_comp_stats()
-#     all_data.append(data)
-# result = pd.concat(all_data)
-
-# Use group_by for cleaner, faster processing:
-drought = usdm.USDM(geography="US", group_by="state", time_period=2024)
-result = drought.get_comp_stats()  # Automatically includes all states with proper identifiers
-```
-
-### Weeks in Drought {#weeks-in-drought}
+### Weeks in Drought 
 
 Once an object of the `USDM` class is created, the `get_weeks_in_drought` method can be used to obtain the number of weeks that the specified geography was at a specified drought level. An optional `drought_threshold` parameter can be specified as one of `[0,1,2,3,4]` corresponding to the drought levels used by U.S. Drought Monitor (default is to return measures for all drought levels in distinct columns). Another optional `stat` parameter can be specified as either `"consecutive"` or `"nonconsecutive"` to specify if the number of weeks at the specified drought level needs to be consecutive or not.
 
-**Note**: This method **ignores** the `group_by` parameter since the USDM API only provides weeks in drought data at the county level. The method always returns data at the county level regardless of the geography level specified, which makes the `group_by` parameter unnecessary and potentially confusing for this specific method.
+**Note**: This method **ignores** the `group_by` parameter since the USDM API only provides weeks in drought data at the county level. The method always returns data at the county level regardless of the geography level specified.
 
 ``` python
 
@@ -141,11 +71,10 @@ wid = drought.get_weeks_in_drought()
 wid.head()
 ```
 
-### Comprehensive Statistics {#comprehensive-statistics}
+### Comprehensive Statistics 
 
 The `get_comp_stats` method can be used to return several different statistics for each drought level for a specified geography and time period. The argument `stat` controls which statistic is returned and can be one of `["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"]` (not case sensitive) which correspond to the total area, percentage of an area, the total population, percentage of the population, and the [drought severity coverage index](https://droughtmonitor.unl.edu/About/AbouttheData/DSCI.aspx). The default behavior is to return the specified statistic for all drought levels (in separate columns). If statistics for only one or a few drought threshold are desired, this can be achieved by specifying the `drought_threshold` parameter with a single integer or list of integers out of `[0,1,2,3,4]`.
 
-**Note**: This method works seamlessly with the `group_by` parameter. When `group_by="county"` or `group_by="state"` is used, comprehensive statistics are returned for all counties or states respectively, with geographic identifiers automatically included in the output for easy analysis and filtering.
 
 ``` python
 
@@ -170,7 +99,7 @@ cs = drought.get_comp_stats(stat = "Area", drought_threshold = 2)
 cs.head()
 ```
 
-### Spatial Data {#spatial-data}
+### Spatial Data 
 
 Spatial data can also be retrieved using `droughtmonitor`. To do so, create a USDM object and then call the `get_spatial_data` method. Spatial data is only avaliable at the national level, meaning `"us"` is the only valid geography for `USDM` when `get_spatial_data` is used. For the `time_period` argument, either a single date or a range of dates can be entered. In the case of a single date, the USDM map that has the closest date to the entered date will be retrieved. In the case of a range of dates being entered, the closest maps to the start and end date will be found, then those maps along with all maps between these dates, will be returned.
 
