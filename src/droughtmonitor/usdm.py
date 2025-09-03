@@ -1,4 +1,3 @@
-#%%
 import os
 import pandas as pd
 import geopandas as gpd
@@ -440,34 +439,115 @@ def get_closest_mapdate(date):
         return closest_date
 
 
+def get_counties_in_state(state, geography_type=None, fips_codes=load_fips_codes()):
+    """
+    Get all county FIPS codes for a given state.
+    
+    Parameters:
+    -----------
+    state : str
+        State abbreviation or FIPS code
+    geography_type : str, optional
+        The type of geography identifier
+    fips_codes : pd.DataFrame, optional
+        DataFrame containing FIPS codes
+        
+    Returns:
+    --------
+    list
+        List of 5-digit county FIPS codes for the state
+    """
+    # validate and get the state
+    valid_state = valid_geography(state, geography_type, fips_codes)
+    
+    # convert state abbreviation to state code if needed
+    if valid_state in fips_codes['state'].values:
+        state_code = fips_codes.loc[fips_codes['state'] == valid_state, 'state_code'].values[0]
+    else:
+        state_code = valid_state
+    
+    # get all counties for this state
+    counties = fips_codes[fips_codes['state_code'] == state_code]['full_fips'].tolist()
+    
+    return counties
+
+
+def get_all_states(fips_codes=load_fips_codes()):
+    """
+    Get all state abbreviations.
+    
+    Parameters:
+    -----------
+    fips_codes : pd.DataFrame, optional
+        DataFrame containing FIPS codes
+        
+    Returns:
+    --------
+    list
+        List of all state abbreviations
+    """
+    return sorted(fips_codes['state'].unique().tolist())
+
+
 # a class USDM that contains the primary arguments for the data
 class USDM:
     """
     A class to interact with the United States Drought Monitor (USDM) API.
+    
     Attributes:
     -----------
     geography : str
-      The geographical area of interest.
-    geography_type : str
-      The type of geographical area (e.g., state, county).
+        The geographical area of interest (e.g., "CA", "US", "06001").
+    geography_type : str, optional
+        The type of geographical area (e.g., "fips"). Defaults to None.
     time_period : list
-      The time period for which data is requested.
+        The time period for which data is requested (e.g., [2020, 2021] or ["2020-01-01", "2020-12-31"]).
+    group_by : str, optional
+        Enables batch processing for multiple geographies. Options:
+        - None (default): Single geography processing
+        - "county": When geography is a state, retrieves data for all counties in that state
+        - "state": When geography is national ("US"/"CONUS"), retrieves data for all states
     url : str
-      The base URL for the USDM API.
+        The base URL for the USDM API.
+    
     Methods:
     --------
-    get_comp_stats(stat=["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"], drought_threshold=[0, 1, 2, 3, 4], threshold_range=None):
-      Retrieves composite statistics from the USDM API.
+    get_comp_stats(stat=["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"], 
+                   drought_threshold=[0, 1, 2, 3, 4], threshold_range=None):
+        Retrieves composite statistics from the USDM API.
     get_weeks_in_drought(drought_threshold=[0, 1, 2, 3, 4], stat=["consecutive", "nonconsecutive"]):
-      Retrieves the number of weeks in drought from the USDM API.
+        Retrieves the number of weeks in drought from the USDM API.
     get_spatial_data(format="df"):
-      Retrieves spatial data from the USDM API.
+        Retrieves spatial data from the USDM API.
+        
+    Examples:
+    ---------
+    # Single geography (original behavior)
+    usdm = USDM(geography="CA", time_period=[2020, 2021])
+    
+    # All counties in California
+    usdm = USDM(geography="CA", group_by="county", time_period=[2020, 2021])
+    
+    # All states in US
+    usdm = USDM(geography="US", group_by="state", time_period=[2020, 2021])
     """
 
     def __init__(self, geography=None, geography_type=None,
-                 time_period=None, url="https://usdmdataservices.unl.edu/api/"):
+                 time_period=None, group_by=None, url="https://usdmdataservices.unl.edu/api/"):
         self.geography_type = geography_type
         self.geography = valid_geography(geography, geography_type)
+        self.group_by = group_by
+
+        # validate group_by parameter
+        if group_by not in [None, "county", "state"]:
+            raise ValueError("group_by must be None, 'county', or 'state'")
+
+        # validate geography/group_by combinations
+        geo_level = geography_level(self.geography, geography_type)
+        if group_by == "county" and geo_level != "state":
+            raise ValueError("group_by='county' is only valid with state-level geography")
+        if group_by == "state" and geo_level != "national":
+            raise ValueError("group_by='state' is only valid with national geography ('US' or 'CONUS')")
 
         # clean dates
         self.cleaned_dates = valid_dates(time_period)
@@ -488,6 +568,10 @@ class USDM:
         The statistics can include area, area percent, population, population percent, and DSCI (Drought Severity and Coverage Index).
         The method constructs API queries based on the provided parameters, retrieves the data, and returns it as a pandas DataFrame.
 
+        When group_by is specified, data is retrieved for multiple geographies:
+        - group_by="county": Retrieves data for all counties in the specified state
+        - group_by="state": Retrieves data for all states (when geography is national)
+
         Parameters:
         -----------
         stat : list of str, optional
@@ -500,22 +584,28 @@ class USDM:
         Returns:
         --------
         pandas.DataFrame
-            A DataFrame containing the retrieved composite statistics.
+            A DataFrame containing the retrieved composite statistics. When group_by is used, includes additional 
+            geographic identifier columns (state/county names and FIPS codes).
 
         Raises:
         -------
         ValueError
             If the provided parameters are not valid.
 
-        Example:
+        Examples:
         --------
+        # Single geography (original behavior)
         usdm_instance = USDM(geography="NE", time_period=[2020, 2021])
         comp_stats_df = usdm_instance.get_comp_stats()
-        print(comp_stats_df)
+        
+        # All counties in California
+        usdm_instance = USDM(geography="CA", group_by="county", time_period=[2020, 2021])
+        comp_stats_df = usdm_instance.get_comp_stats()
+        
+        # All states 
+        usdm_instance = USDM(geography="US", group_by="state", time_period=[2020, 2021])
+        comp_stats_df = usdm_instance.get_comp_stats()
         """
-
-        # might need to type check drought_threshold if it is specifed for
-        # stats that aren't expressed as a percentage
 
         # clean drought threshold argument and type check it
         drought_threshold = clean_drought_threshold(drought_threshold)
@@ -523,82 +613,128 @@ class USDM:
         # clean stat input and type check it
         stat = clean_stat(stat)
 
-        # Define area based on geography level
-        area = {
-            "national": "USStatistics/",
-            "state": "StateStatistics/",
-            "county": "CountyStatistics/"
-        }.get(geography_level(self.geography))
+        # determine geographies to query
+        if self.group_by is None:
+            # original single geography behavior
+            geographies = [self.geography]
+        elif self.group_by == "county":
+            # get all counties in the state
+            geographies = get_counties_in_state(self.geography, self.geography_type)
+        elif self.group_by == "state":
+            # get all states
+            geographies = get_all_states()
+        
+        # initialize list to store all results
+        all_results = []
 
-        # initialize a vector to store queries
-        query = []
-
-        # Stat type can be 1 or 2, but both values appear to return the same data
-        stat_type = 1
-
-        # states, for whatever reason need to be entered as fips 
-        # whereas other endpoints require two-letter abbreviation
-        if area == "StateStatistics/":
-            aoi = convert_state_code(self.geography)
-        else:
-            aoi = self.geography
-
-        # construct portion of the query related to min/max thresholds
-        if threshold_range is not None:
-            stat_endpoint = "BasicStatisticsBy"
-            threshold_query = f"&dx={drought_threshold[0]}&DxLevelThresholdFrom={min(threshold_range)}&DxLevelThresholdTo={max(threshold_range)}"
-        else:
-            threshold_query = ""
-            stat_endpoint = "DroughtSeverityStatisticsBy"
-
-        # paste the components specific to the variable together
-        query.extend(
-           [
-              f'{self.url}{area}Get{stat_endpoint*(s != "DSCI")}{s}?aoi={aoi}{threshold_query}&startdate={self.start_date}&enddate={self.end_date}&statisticsType={stat_type}'
-              for s in stat
-           ]
-        )
-
-        # initialize data as a dict
-        data_dict = {}
-
-        # initialize a index variable
-        index = 1
-
-        # loop over each individual url in the query vector
-        print("Loading comprehensive statistics...")
-        for q in tqdm(query):
-
-            # header specifying data should be returned in json format
-            headers = {'Accept': 'application/json'}
-
-            # get the data
-            response = requests.get(q, headers=headers)
+        # process each geography
+        progress_desc = "Loading comprehensive statistics"
+        if self.group_by:
+            progress_desc += f" (by {self.group_by})"
+        
+        for geo in tqdm(geographies, desc=progress_desc):
             
-            # check status code before continuing
-            check_status_code(response.status_code)
+            # Define area based on geography level for current geo
+            if self.group_by == "county":
+                area = "CountyStatistics/"
+                aoi = geo  # county FIPS code
+            elif self.group_by == "state":
+                area = "StateStatistics/"
+                aoi = convert_state_code(geo)  # convert to state FIPS
+            else:
+                # original behavior
+                area = {
+                    "national": "USStatistics/",
+                    "state": "StateStatistics/",
+                    "county": "CountyStatistics/"
+                }.get(geography_level(self.geography))
+                
+                if area == "StateStatistics/":
+                    aoi = convert_state_code(self.geography)
+                else:
+                    aoi = self.geography
 
-            # extract the data as a list
-            data = response.json()
+            # initialize a vector to store queries for this geography
+            query = []
 
-            # add data to data_list dictionary
-            data_dict[index] = pd.DataFrame(data)
+            # Stat type can be 1 or 2, but both values appear to return the same data
+            stat_type = 1
 
-            data_dict[index].columns = rename_comp_stat_columns(query=q, names=data_dict[index].columns)
+            # construct portion of the query related to min/max thresholds
+            if threshold_range is not None:
+                stat_endpoint = "BasicStatisticsBy"
+                threshold_query = f"&dx={drought_threshold[0]}&DxLevelThresholdFrom={min(threshold_range)}&DxLevelThresholdTo={max(threshold_range)}"
+            else:
+                threshold_query = ""
+                stat_endpoint = "DroughtSeverityStatisticsBy"
 
-            # rename columns
-            data_dict[index].rename(columns={
-                "validStart": "mapStartDate",
-                "validEnd": "mapEndDate",
-            }, inplace=True)
+            # paste the components specific to the variable together
+            query.extend(
+               [
+                  f'{self.url}{area}Get{stat_endpoint*(s != "DSCI")}{s}?aoi={aoi}{threshold_query}&startdate={self.start_date}&enddate={self.end_date}&statisticsType={stat_type}'
+                  for s in stat
+               ]
+            )
 
-            # advance index
-            index += 1
+            # initialize data as a dict for this geography
+            data_dict = {}
+            index = 1
 
-        # merge each of the dataframes in the data_list dictionary using a full join
-        result_df = data_dict[1]
-        for i in range(2, len(data_dict) + 1):
-            result_df = result_df.merge(data_dict[i], how='outer')
+            # loop over each individual url in the query vector
+            for q in query:
+                # header specifying data should be returned in json format
+                headers = {'Accept': 'application/json'}
+
+                # get the data
+                response = requests.get(q, headers=headers)
+                
+                # check status code before continuing
+                check_status_code(response.status_code)
+
+                # extract the data as a list
+                data = response.json()
+
+                # add data to data_dict dictionary
+                data_dict[index] = pd.DataFrame(data)
+
+                data_dict[index].columns = rename_comp_stat_columns(query=q, names=data_dict[index].columns)
+
+                # rename columns
+                data_dict[index].rename(columns={
+                    "validStart": "mapStartDate",
+                    "validEnd": "mapEndDate",
+                }, inplace=True)
+
+                # advance index
+                index += 1
+
+            # merge each of the dataframes for this geography
+            if len(data_dict) > 0:
+                geo_result_df = data_dict[1]
+                for i in range(2, len(data_dict) + 1):
+                    geo_result_df = geo_result_df.merge(data_dict[i], how='outer')
+
+                # add geographic identifiers if grouping
+                if self.group_by == "county":
+                    # add county and state information
+                    fips_codes = load_fips_codes()
+                    county_info = fips_codes[fips_codes['full_fips'] == geo].iloc[0]
+                    geo_result_df['county_fips'] = geo
+                    geo_result_df['county_name'] = county_info['county']
+                    geo_result_df['state_code'] = county_info['state_code']
+                    geo_result_df['state_name'] = county_info['state']
+                elif self.group_by == "state":
+                    # add state information
+                    geo_result_df['state_code'] = convert_state_code(geo)
+                    geo_result_df['state_name'] = geo
+
+                all_results.append(geo_result_df)
+
+        # combine all results
+        if len(all_results) > 0:
+            result_df = pd.concat(all_results, ignore_index=True)
+        else:
+            result_df = pd.DataFrame()
 
         # remove time of day from date columns
         date_columns = [c for c in result_df.columns if "Date" in c]
@@ -617,6 +753,12 @@ class USDM:
     def get_weeks_in_drought(self, drought_threshold=[0, 1, 2, 3, 4], stat=["consecutive", "nonconsecutive"]):
         """
         Retrieve the number of weeks in drought for specified drought levels and statistics.
+        
+        Note: This method always returns county-level data as determined by the USDM API,
+        regardless of the geography level specified. The group_by parameter is ignored
+        for this method since the USDM API only provides weeks in drought data at the
+        county level.
+        
         Parameters:
         -----------
         drought_threshold : list of int, optional
@@ -633,6 +775,20 @@ class USDM:
         -------
         ValueError
           If the response status code is not 200.
+        
+        Examples:
+        --------
+        # State geography returns county-level data for counties in that state
+        usdm_instance = USDM(geography="NE", time_period=[2020, 2021])
+        weeks_df = usdm_instance.get_weeks_in_drought()
+        
+        # County geography returns data for that specific county
+        usdm_instance = USDM(geography="31001", time_period=[2020, 2021])  
+        weeks_df = usdm_instance.get_weeks_in_drought()
+        
+        # group_by parameter is ignored for this method
+        usdm_instance = USDM(geography="CA", group_by="county", time_period=[2020, 2021])
+        weeks_df = usdm_instance.get_weeks_in_drought()  # Same result as without group_by
         """
 
         # clean drought threshold argument and type check it
@@ -641,70 +797,86 @@ class USDM:
         # clean stat input and type check it    
         stat = clean_stat(stat)     
 
-        # define area for weeds in drought 
+        # Note: get_weeks_in_drought always returns county-level data from the USDM API
+        # Therefore, we ignore the group_by parameter and use the original geography
+        geographies = [self.geography]
+        
+        # initialize list to store all results
+        all_results = []
+
+        # define area for weeks in drought 
         area = "ConsecutiveNonConsecutiveStatistics/"
         
-        # initialize a list to store queries
-        query = []
-
-        # iterate over stat_type and drought_threshold to create a list of queries
-        query.extend(
-          [
-            f"{self.url}{area}Get{s}?geography={self.geography}&dx={drought_level}&minimumweeks=0&startdate={self.start_date}&enddate={self.end_date}"
-            for drought_level in drought_threshold
-            for s in stat
-          ]
-        )
-
-        # initialize data as a ldict
-        data_dict = {}
-
-        # initialize a index variable
-        index = 1
-
-        # loop over each individual url in the query vector
-        print("Loading weeks in drought data...")
-        for q in tqdm(query):
-
-
-            # header specifying data should be returned in json format
-            headers = {'Accept': 'application/json'}
-
-            # get the data
-            response = requests.get(q, headers=headers)
+        # process the geography (always single geography for weeks in drought)
+        progress_desc = "Loading weeks in drought data"
             
-            # check status code before continuing
-            check_status_code(response.status_code)
+        for geo in tqdm(geographies, desc=progress_desc):
+            
+            # initialize a list to store queries for this geography
+            query = []
 
-            # extract the data as a list
-            data = response.json()
+            # iterate over stat_type and drought_threshold to create a list of queries
+            query.extend(
+              [
+                f"{self.url}{area}Get{s}?geography={geo}&dx={drought_level}&minimumweeks=0&startdate={self.start_date}&enddate={self.end_date}"
+                for drought_level in drought_threshold
+                for s in stat
+              ]
+            )
 
-            # add data to data_list dictionary
-            data_dict[index] = pd.DataFrame(data)
+            # initialize data as a dict for this geography
+            data_dict = {}
+            index = 1
 
-            # get the drought level from the query
-            drought_level = None
-            for d in range(5):
-              if f"dx={d}" in q:
-                drought_level = f"D{d}"
+            # loop over each individual url in the query vector
+            for q in query:
+                # header specifying data should be returned in json format
+                headers = {'Accept': 'application/json'}
 
-            # relabel columns to include drought level
-            data_dict[index].rename(columns={
-                "nonConsecutiveWeeks": f"{drought_level}_NonConsecutiveWeeks",
-                "consecutiveWeeks": f"{drought_level}_ConsecutiveWeeks",
-                "startDate": f"{drought_level}_ConsecutiveWeeksStartDate",
-                "endDate": f"{drought_level}_ConsecutiveWeeksEndDate",
-            }, inplace=True)
+                # get the data
+                response = requests.get(q, headers=headers)
+                
+                # check status code before continuing
+                check_status_code(response.status_code)
 
-            # advance index
-            index += 1
-        
-        # merge each of the dataframes in the data_list dictionary using a full join
-        result_df = data_dict[1]
-        for i in range(2, len(data_dict) + 1):
-            result_df = result_df.merge(data_dict[i], how='outer')
+                # extract the data as a list
+                data = response.json()
 
-        #add date range to specify the query date range
+                # add data to data_dict dictionary
+                data_dict[index] = pd.DataFrame(data)
+
+                # get the drought level from the query
+                drought_level_label = None
+                for d in range(5):
+                  if f"dx={d}" in q:
+                    drought_level_label = f"D{d}"
+
+                # relabel columns to include drought level
+                data_dict[index].rename(columns={
+                    "nonConsecutiveWeeks": f"{drought_level_label}_NonConsecutiveWeeks",
+                    "consecutiveWeeks": f"{drought_level_label}_ConsecutiveWeeks",
+                    "startDate": f"{drought_level_label}_ConsecutiveWeeksStartDate",
+                    "endDate": f"{drought_level_label}_ConsecutiveWeeksEndDate",
+                }, inplace=True)
+
+                # advance index
+                index += 1
+            
+            # merge each of the dataframes for this geography
+            if len(data_dict) > 0:
+                geo_result_df = data_dict[1]
+                for i in range(2, len(data_dict) + 1):
+                    geo_result_df = geo_result_df.merge(data_dict[i], how='outer')
+
+                all_results.append(geo_result_df)
+
+        # combine all results (should only be one geography)
+        if len(all_results) > 0:
+            result_df = all_results[0]  # Only one geography, so take the first result
+        else:
+            result_df = pd.DataFrame()
+
+        # add date range to specify the query date range
         result_df['QueryStartDate'] = pd.to_datetime(self.start_date)
         result_df['QueryEndDate'] = pd.to_datetime(self.end_date)
 

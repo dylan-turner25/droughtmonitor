@@ -317,4 +317,218 @@ def test_get_spatial_data(mocker):
     assert result["12/31/2023"]["features"][0]["properties"]["DM"] == 4
 
 
+# Tests for new group_by functionality
+
+def test_usdm_group_by_parameter_validation():
+    """Test that the USDM constructor validates group_by parameter correctly."""
+    
+    # Test valid group_by values
+    usdm_obj = usdm.USDM(geography="CA", group_by=None, time_period=[2020])
+    assert usdm_obj.group_by is None
+    
+    usdm_obj = usdm.USDM(geography="CA", group_by="county", time_period=[2020])
+    assert usdm_obj.group_by == "county"
+    
+    usdm_obj = usdm.USDM(geography="US", group_by="state", time_period=[2020])
+    assert usdm_obj.group_by == "state"
+    
+    # Test invalid group_by values
+    with pytest.raises(ValueError, match="group_by must be None, 'county', or 'state'"):
+        usdm.USDM(geography="CA", group_by="invalid", time_period=[2020])
+    
+    # Test invalid combinations
+    with pytest.raises(ValueError, match="group_by='county' is only valid with state-level geography"):
+        usdm.USDM(geography="US", group_by="county", time_period=[2020])
+    
+    with pytest.raises(ValueError, match="group_by='state' is only valid with national geography"):
+        usdm.USDM(geography="CA", group_by="state", time_period=[2020])
+    
+    with pytest.raises(ValueError, match="group_by='county' is only valid with state-level geography"):
+        usdm.USDM(geography="01001", group_by="county", time_period=[2020])  # county geography
+
+
+def test_get_counties_in_state():
+    """Test the get_counties_in_state helper function."""
+    
+    # Test with state abbreviation
+    counties_ca = usdm.get_counties_in_state("CA")
+    assert isinstance(counties_ca, list)
+    assert len(counties_ca) > 0
+    assert "06001" in counties_ca  # Alameda County should be in CA
+    assert all(county.startswith("06") for county in counties_ca)  # All should start with CA state code
+    
+    # Test with state FIPS code
+    counties_ca_fips = usdm.get_counties_in_state("06")
+    assert counties_ca == counties_ca_fips  # Should return same result
+    
+    # Test with different state
+    counties_tx = usdm.get_counties_in_state("TX")
+    assert isinstance(counties_tx, list)
+    assert len(counties_tx) > 0
+    assert all(county.startswith("48") for county in counties_tx)  # TX state code is 48
+    
+    # Verify different states return different counties
+    assert counties_ca != counties_tx
+
+
+def test_get_all_states():
+    """Test the get_all_states helper function."""
+    
+    states = usdm.get_all_states()
+    assert isinstance(states, list)
+    assert len(states) > 50  # Should have all US states and territories
+    assert "CA" in states
+    assert "TX" in states
+    assert "NY" in states
+    assert states == sorted(states)  # Should be sorted
+
+
+def test_get_comp_stats_with_group_by_county(mocker):
+    """Test get_comp_stats with group_by='county'."""
+    
+    # Mock API response for individual counties
+    mock_county_response = {
+        "validStart": "2020-01-07T00:00:00Z",
+        "validEnd": "2020-01-13T00:00:00Z",
+        "mapDate": "2020-01-07T00:00:00Z",
+        "d0": 100.5,
+        "d1": 75.2,
+        "d2": 50.1,
+        "d3": 25.0,
+        "d4": 10.0,
+        "none": 200.0
+    }
+    
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [mock_county_response]
+    mocker.patch("requests.get", return_value=mock_response)
+    
+    # Mock get_counties_in_state to return just a few counties for testing
+    mock_counties = ["06001", "06003", "06005"]  # Alameda, Alpine, Amador
+    mocker.patch("droughtmonitor.usdm.get_counties_in_state", return_value=mock_counties)
+    
+    # Create USDM object with county grouping
+    drought_obj = usdm.USDM(geography="CA", group_by="county", time_period=[2020])
+    result = drought_obj.get_comp_stats(stat=["Area"])
+    
+    # Verify result structure
+    assert isinstance(result, usdm.pd.DataFrame)
+    assert len(result) == len(mock_counties)  # One row per county
+    
+    # Check that geographic identifiers are added
+    required_columns = ["county_fips", "county_name", "state_code", "state_name"]
+    for col in required_columns:
+        assert col in result.columns
+    
+    # Check that all counties are represented
+    assert set(result["county_fips"]) == set(mock_counties)
+    
+    # Verify all state codes are CA (06)
+    assert all(result["state_code"] == "06")
+    assert all(result["state_name"] == "CA")
+
+
+def test_get_comp_stats_with_group_by_state(mocker):
+    """Test get_comp_stats with group_by='state'."""
+    
+    # Mock API response for individual states
+    mock_state_response = {
+        "validStart": "2020-01-07T00:00:00Z",
+        "validEnd": "2020-01-13T00:00:00Z",
+        "mapDate": "2020-01-07T00:00:00Z",
+        "d0": 1000.5,
+        "d1": 750.2,
+        "d2": 500.1,
+        "d3": 250.0,
+        "d4": 100.0,
+        "none": 2000.0
+    }
+    
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [mock_state_response]
+    mocker.patch("requests.get", return_value=mock_response)
+    
+    # Mock get_all_states to return just a few states for testing
+    mock_states = ["CA", "TX", "NY"]
+    mocker.patch("droughtmonitor.usdm.get_all_states", return_value=mock_states)
+    
+    # Mock convert_state_code for state FIPS conversion
+    state_fips_map = {"CA": "06", "TX": "48", "NY": "36"}
+    mocker.patch("droughtmonitor.usdm.convert_state_code", side_effect=lambda x: state_fips_map[x])
+    
+    # Create USDM object with state grouping
+    drought_obj = usdm.USDM(geography="US", group_by="state", time_period=[2020])
+    result = drought_obj.get_comp_stats(stat=["Area"])
+    
+    # Verify result structure
+    assert isinstance(result, usdm.pd.DataFrame)
+    assert len(result) == len(mock_states)  # One row per state
+    
+    # Check that geographic identifiers are added
+    required_columns = ["state_code", "state_name"]
+    for col in required_columns:
+        assert col in result.columns
+    
+    # Check that all states are represented
+    assert set(result["state_name"]) == set(mock_states)
+
+
+def test_get_weeks_in_drought_ignores_group_by(mocker):
+    """Test that get_weeks_in_drought ignores the group_by parameter."""
+    
+    # Mock API response
+    mock_weeks_response = {
+        "nonConsecutiveWeeks": 15,
+        "consecutiveWeeks": 8,
+        "startDate": "2020-06-01T00:00:00Z",
+        "endDate": "2020-08-01T00:00:00Z"
+    }
+    
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [mock_weeks_response]
+    mocker.patch("requests.get", return_value=mock_response)
+    
+    # Create USDM objects with and without group_by - should behave identically
+    drought_obj_no_group = usdm.USDM(geography="CA", time_period=[2020])
+    drought_obj_with_group = usdm.USDM(geography="CA", group_by="county", time_period=[2020])
+    
+    result_no_group = drought_obj_no_group.get_weeks_in_drought(drought_threshold=[0], stat=["consecutive"])
+    result_with_group = drought_obj_with_group.get_weeks_in_drought(drought_threshold=[0], stat=["consecutive"])
+    
+    # Both results should be identical DataFrames
+    assert isinstance(result_no_group, usdm.pd.DataFrame)
+    assert isinstance(result_with_group, usdm.pd.DataFrame)
+    
+    # Should have same structure (group_by ignored)
+    assert list(result_no_group.columns) == list(result_with_group.columns)
+    assert len(result_no_group) == len(result_with_group)
+    
+    # Check for expected drought threshold columns
+    assert "D0_ConsecutiveWeeks" in result_no_group.columns
+    assert "D0_ConsecutiveWeeks" in result_with_group.columns
+    
+    # Should NOT have geographic identifier columns (since group_by is ignored)
+    geographic_columns = ["county_fips", "county_name", "state_code", "state_name"]
+    for col in geographic_columns:
+        assert col not in result_no_group.columns
+        assert col not in result_with_group.columns
+
+
+def test_backward_compatibility():
+    """Test that existing functionality without group_by still works."""
+    
+    # Test that USDM objects without group_by work as before
+    drought_obj = usdm.USDM(geography="CA", time_period=[2020])
+    assert drought_obj.group_by is None
+    assert drought_obj.geography == "CA"
+    
+    # Test with explicit group_by=None
+    drought_obj2 = usdm.USDM(geography="CA", group_by=None, time_period=[2020])
+    assert drought_obj2.group_by is None
+    assert drought_obj2.geography == "CA"
+
+
 # %%
