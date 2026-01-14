@@ -489,15 +489,103 @@ def get_all_states(fips_codes=load_fips_codes()):
     return sorted(fips_codes['state'].unique().tolist())
 
 
+def estimate_api_calls(geography, group_by, num_stats=5, fips_codes=load_fips_codes()):
+    """
+    Estimate the number of API calls that will be made for a given query.
+
+    Parameters:
+    -----------
+    geography : str or list
+        The geography parameter (can be single or list)
+    group_by : str or None
+        The grouping parameter
+    num_stats : int
+        Number of statistics being queried (default 5)
+    fips_codes : pd.DataFrame
+        FIPS codes dataframe
+
+    Returns:
+    --------
+    int
+        Estimated number of API calls
+    """
+    # Handle list of geographies
+    if isinstance(geography, list):
+        if group_by == "county":
+            # Sum counties across all states in list
+            total_counties = 0
+            for state in geography:
+                counties = get_counties_in_state(state, fips_codes=fips_codes)
+                total_counties += len(counties)
+            return total_counties * num_stats
+        else:
+            # One call per state per stat
+            return len(geography) * num_stats
+
+    # Single geography
+    geo_level = geography_level(geography)
+
+    if group_by is None:
+        # Single geography query
+        return num_stats
+    elif group_by == "county":
+        if geo_level == "national":
+            # All counties in US
+            total_counties = len(fips_codes)
+            return total_counties * num_stats
+        else:
+            # Counties in single state
+            counties = get_counties_in_state(geography, fips_codes=fips_codes)
+            return len(counties) * num_stats
+    elif group_by == "state":
+        # All states
+        states = get_all_states(fips_codes=fips_codes)
+        return len(states) * num_stats
+
+    return num_stats
+
+
+def prompt_user_confirmation(num_calls, threshold=50):
+    """
+    Prompt user for confirmation when API calls exceed threshold.
+
+    Parameters:
+    -----------
+    num_calls : int
+        Number of API calls that will be made
+    threshold : int
+        Threshold for prompting (default 50)
+
+    Returns:
+    --------
+    bool
+        True if user confirms or calls below threshold, False otherwise
+    """
+    if num_calls <= threshold:
+        return True
+
+    message = (
+        f"\nWarning: This query will make approximately {num_calls} API calls.\n"
+        f"Do you want to proceed? (yes/no): "
+    )
+
+    response = input(message).strip().lower()
+    return response in ['yes', 'y']
+
+
 # a class USDM that contains the primary arguments for the data
 class USDM:
     """
     A class to interact with the United States Drought Monitor (USDM) API.
-    
+
     Attributes:
     -----------
-    geography : str
-        The geographical area of interest (e.g., "CA", "US", "06001").
+    geography : str or list
+        The geographical area of interest. Can be:
+        - "US" or "CONUS" for national data
+        - State abbreviation (e.g., "CA") or FIPS code (e.g., "06")
+        - County FIPS code (e.g., "06001")
+        - List of state abbreviations (e.g., ["CA", "OR", "WA"])
     geography_type : str, optional
         The type of geographical area (e.g., "fips"). Defaults to None.
     time_period : list
@@ -505,49 +593,96 @@ class USDM:
     group_by : str, optional
         Enables batch processing for multiple geographies. Options:
         - None (default): Single geography processing
-        - "county": When geography is a state, retrieves data for all counties in that state
+        - "county": Retrieves data for all counties in specified geography
+          * Works with state geography (e.g., "CA")
+          * Works with list of states (e.g., ["CA", "OR"])
+          * Works with national geography ("US"/"CONUS") for ALL counties
         - "state": When geography is national ("US"/"CONUS"), retrieves data for all states
+    confirm : bool, optional
+        Whether to prompt for user confirmation when API calls exceed threshold (default True)
+    confirm_threshold : int, optional
+        Number of API calls that triggers confirmation prompt (default 50)
     url : str
         The base URL for the USDM API.
-    
+
     Methods:
     --------
-    get_comp_stats(stat=["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"], 
+    get_comp_stats(stat=["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"],
                    drought_threshold=[0, 1, 2, 3, 4], threshold_range=None):
         Retrieves composite statistics from the USDM API.
     get_weeks_in_drought(drought_threshold=[0, 1, 2, 3, 4], stat=["consecutive", "nonconsecutive"]):
         Retrieves the number of weeks in drought from the USDM API.
     get_spatial_data(format="df"):
         Retrieves spatial data from the USDM API.
-        
+
     Examples:
     ---------
     # Single geography (original behavior)
     usdm = USDM(geography="CA", time_period=[2020, 2021])
-    
+
     # All counties in California
     usdm = USDM(geography="CA", group_by="county", time_period=[2020, 2021])
-    
+
+    # Counties in multiple states
+    usdm = USDM(geography=["CA", "OR", "WA"], group_by="county", time_period=[2020, 2021])
+
+    # All counties in US (will prompt for confirmation)
+    usdm = USDM(geography="US", group_by="county", time_period=[2020])
+
+    # Skip confirmation prompt for automated scripts
+    usdm = USDM(geography="US", group_by="county", time_period=[2020], confirm=False)
+
     # All states in US
     usdm = USDM(geography="US", group_by="state", time_period=[2020, 2021])
     """
 
     def __init__(self, geography=None, geography_type=None,
-                 time_period=None, group_by=None, url="https://usdmdataservices.unl.edu/api/"):
+                 time_period=None, group_by=None,
+                 confirm=True, confirm_threshold=50,
+                 url="https://usdmdataservices.unl.edu/api/"):
         self.geography_type = geography_type
-        self.geography = valid_geography(geography, geography_type)
+
+        # Store original geography input for processing
+        self.geography_input = geography
+
+        # Handle list of geographies
+        if isinstance(geography, list):
+            validated_geographies = [valid_geography(geo, geography_type) for geo in geography]
+
+            # Check all are same type (all states)
+            geo_levels = [geography_level(g, geography_type) for g in validated_geographies]
+            if len(set(geo_levels)) > 1:
+                raise ValueError("All geographies in list must be the same type")
+            if geo_levels[0] != "state":
+                raise ValueError("List geography only supports state-level geographies")
+
+            self.geography = validated_geographies
+            self.geography_list_input = True
+        else:
+            self.geography = valid_geography(geography, geography_type)
+            self.geography_list_input = False
+
         self.group_by = group_by
+        self.confirm = confirm
+        self.confirm_threshold = confirm_threshold
 
         # validate group_by parameter
         if group_by not in [None, "county", "state"]:
             raise ValueError("group_by must be None, 'county', or 'state'")
 
         # validate geography/group_by combinations
-        geo_level = geography_level(self.geography, geography_type)
-        if group_by == "county" and geo_level != "state":
-            raise ValueError("group_by='county' is only valid with state-level geography")
-        if group_by == "state" and geo_level != "national":
-            raise ValueError("group_by='state' is only valid with national geography ('US' or 'CONUS')")
+        if self.geography_list_input:
+            if group_by not in [None, "county"]:
+                raise ValueError("When providing a list of states, group_by must be None or 'county'")
+        else:
+            geo_level = geography_level(self.geography, geography_type)
+
+            if group_by == "county":
+                if geo_level not in ["state", "national"]:
+                    raise ValueError("group_by='county' requires state-level or national geography")
+
+            if group_by == "state" and geo_level != "national":
+                raise ValueError("group_by='state' is only valid with national geography ('US' or 'CONUS')")
 
         # clean dates
         self.cleaned_dates = valid_dates(time_period)
@@ -597,12 +732,20 @@ class USDM:
         # Single geography (original behavior)
         usdm_instance = USDM(geography="NE", time_period=[2020, 2021])
         comp_stats_df = usdm_instance.get_comp_stats()
-        
+
         # All counties in California
         usdm_instance = USDM(geography="CA", group_by="county", time_period=[2020, 2021])
         comp_stats_df = usdm_instance.get_comp_stats()
-        
-        # All states 
+
+        # Counties in multiple states
+        usdm_instance = USDM(geography=["CA", "OR"], group_by="county", time_period=[2020, 2021])
+        comp_stats_df = usdm_instance.get_comp_stats()
+
+        # All counties nationally (will prompt for confirmation)
+        usdm_instance = USDM(geography="US", group_by="county", time_period=[2020])
+        comp_stats_df = usdm_instance.get_comp_stats()
+
+        # All states
         usdm_instance = USDM(geography="US", group_by="state", time_period=[2020, 2021])
         comp_stats_df = usdm_instance.get_comp_stats()
         """
@@ -613,13 +756,41 @@ class USDM:
         # clean stat input and type check it
         stat = clean_stat(stat)
 
+        # Estimate API calls and get confirmation if needed
+        num_stats = len(stat)
+        estimated_calls = estimate_api_calls(
+            geography=self.geography_input if hasattr(self, 'geography_input') else self.geography,
+            group_by=self.group_by,
+            num_stats=num_stats
+        )
+
+        if self.confirm and not prompt_user_confirmation(estimated_calls, self.confirm_threshold):
+            print("Query cancelled by user.")
+            return pd.DataFrame()
+
         # determine geographies to query
-        if self.group_by is None:
+        if self.geography_list_input:
+            if self.group_by == "county":
+                # Get all counties across all states in the list
+                geographies = []
+                for state in self.geography:
+                    geographies.extend(get_counties_in_state(state, self.geography_type))
+            else:
+                # Query each state individually
+                geographies = self.geography
+        elif self.group_by is None:
             # original single geography behavior
             geographies = [self.geography]
         elif self.group_by == "county":
-            # get all counties in the state
-            geographies = get_counties_in_state(self.geography, self.geography_type)
+            if geography_level(self.geography) == "national":
+                # Get all counties in all states
+                all_states = get_all_states()
+                geographies = []
+                for state in all_states:
+                    geographies.extend(get_counties_in_state(state, self.geography_type))
+            else:
+                # Get counties in single state
+                geographies = get_counties_in_state(self.geography, self.geography_type)
         elif self.group_by == "state":
             # get all states
             geographies = get_all_states()
@@ -628,9 +799,15 @@ class USDM:
         all_results = []
 
         # process each geography
-        progress_desc = "Loading comprehensive statistics"
         if self.group_by:
-            progress_desc += f" (by {self.group_by})"
+            if self.geography_list_input and self.group_by == "county":
+                progress_desc = f"Loading statistics for counties in {len(self.geography)} states"
+            elif self.group_by == "county" and geography_level(self.geography) == "national":
+                progress_desc = f"Loading statistics for all {len(geographies)} counties (national)"
+            else:
+                progress_desc = f"Loading statistics (by {self.group_by})"
+        else:
+            progress_desc = "Loading comprehensive statistics"
         
         for geo in tqdm(geographies, desc=progress_desc):
             
@@ -726,6 +903,12 @@ class USDM:
                 elif self.group_by == "state":
                     # add state information
                     geo_result_df['state_code'] = convert_state_code(geo)
+                    geo_result_df['state_name'] = geo
+                elif self.geography_list_input and self.group_by is None:
+                    # List of states without grouping - add state identifiers
+                    fips_codes = load_fips_codes()
+                    state_info = fips_codes[fips_codes['state'] == geo].iloc[0]
+                    geo_result_df['state_code'] = state_info['state_code']
                     geo_result_df['state_name'] = geo
 
                 all_results.append(geo_result_df)

@@ -337,13 +337,15 @@ def test_usdm_group_by_parameter_validation():
         usdm.USDM(geography="CA", group_by="invalid", time_period=[2020])
     
     # Test invalid combinations
-    with pytest.raises(ValueError, match="group_by='county' is only valid with state-level geography"):
-        usdm.USDM(geography="US", group_by="county", time_period=[2020])
-    
+    # NOTE: US with group_by="county" is now VALID (enhanced functionality)
+    # Just test that it works
+    usdm_obj = usdm.USDM(geography="US", group_by="county", time_period=[2020], confirm=False)
+    assert usdm_obj.group_by == "county"
+
     with pytest.raises(ValueError, match="group_by='state' is only valid with national geography"):
         usdm.USDM(geography="CA", group_by="state", time_period=[2020])
-    
-    with pytest.raises(ValueError, match="group_by='county' is only valid with state-level geography"):
+
+    with pytest.raises(ValueError, match="group_by='county' requires state-level or national geography"):
         usdm.USDM(geography="01001", group_by="county", time_period=[2020])  # county geography
 
 
@@ -519,16 +521,134 @@ def test_get_weeks_in_drought_ignores_group_by(mocker):
 
 def test_backward_compatibility():
     """Test that existing functionality without group_by still works."""
-    
+
     # Test that USDM objects without group_by work as before
     drought_obj = usdm.USDM(geography="CA", time_period=[2020])
     assert drought_obj.group_by is None
     assert drought_obj.geography == "CA"
-    
+
     # Test with explicit group_by=None
     drought_obj2 = usdm.USDM(geography="CA", group_by=None, time_period=[2020])
     assert drought_obj2.group_by is None
     assert drought_obj2.geography == "CA"
 
 
-# %%
+def test_list_geography_validation():
+    """Test validation of list geography inputs."""
+
+    # Valid: list of states
+    usdm_obj = usdm.USDM(geography=["CA", "OR", "WA"], time_period=[2020])
+    assert usdm_obj.geography == ["CA", "OR", "WA"]
+    assert usdm_obj.geography_list_input == True
+
+    # Invalid: list with non-state (county FIPS code)
+    # This will fail with "All geographies in list must be the same type" because CA is state and 06001 is county
+    with pytest.raises(ValueError, match="All geographies in list must be the same type"):
+        usdm.USDM(geography=["CA", "06001"], time_period=[2020])
+
+    # Invalid: mixed national and state
+    with pytest.raises(ValueError, match="All geographies in list must be the same type"):
+        usdm.USDM(geography=["CA", "US"], time_period=[2020])
+
+    # Invalid: group_by=state with list of states
+    with pytest.raises(ValueError, match="When providing a list of states, group_by must be None or 'county'"):
+        usdm.USDM(geography=["CA", "OR"], group_by="state", time_period=[2020])
+
+
+def test_national_county_query_validation():
+    """Test that national geography with group_by=county is allowed."""
+
+    # Should accept US with group_by=county
+    usdm_obj = usdm.USDM(geography="US", group_by="county", time_period=[2020], confirm=False)
+    assert usdm_obj.group_by == "county"
+    assert usdm_obj.geography == "TOTAL"
+
+    # Should accept CONUS with group_by=county
+    usdm_obj2 = usdm.USDM(geography="CONUS", group_by="county", time_period=[2020], confirm=False)
+    assert usdm_obj2.group_by == "county"
+    assert usdm_obj2.geography == "CONUS"
+
+
+def test_estimate_api_calls():
+    """Test API call estimation function."""
+
+    # Single state, no grouping
+    assert usdm.estimate_api_calls("CA", None, 5) == 5
+
+    # State with county grouping - CA has 58 counties
+    ca_estimate = usdm.estimate_api_calls("CA", "county", 5)
+    assert ca_estimate == 58 * 5  # 290
+
+    # List of states with county grouping
+    list_estimate = usdm.estimate_api_calls(["CA", "OR"], "county", 5)
+    ca_counties = len(usdm.get_counties_in_state("CA"))
+    or_counties = len(usdm.get_counties_in_state("OR"))
+    assert list_estimate == (ca_counties + or_counties) * 5
+
+    # List of states without grouping
+    assert usdm.estimate_api_calls(["CA", "OR", "WA"], None, 5) == 3 * 5
+
+
+def test_confirmation_bypass(mocker):
+    """Test that confirm=False bypasses the confirmation prompt."""
+
+    # Mock API response
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"mapDate": "2020-01-07", "d0": 100}]
+    mocker.patch("requests.get", return_value=mock_response)
+
+    # Mock estimate_api_calls to return high count
+    mocker.patch("droughtmonitor.usdm.estimate_api_calls", return_value=1000)
+
+    # With confirm=False, should not prompt and should return results
+    drought_obj = usdm.USDM(geography="CA", group_by="county",
+                            time_period=[2020], confirm=False)
+    result = drought_obj.get_comp_stats(stat=["Area"])
+
+    # Should return a DataFrame without prompting
+    assert isinstance(result, usdm.pd.DataFrame)
+
+
+def test_list_geography_get_comp_stats(mocker):
+    """Test get_comp_stats with list of states and county grouping."""
+
+    # Mock responses
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"mapDate": "2020-01-07", "d0": 100}]
+    mocker.patch("requests.get", return_value=mock_response)
+
+    # Mock get_counties_in_state to return fixed counties
+    mocker.patch("droughtmonitor.usdm.get_counties_in_state",
+                 return_value=["06001", "06003"])
+
+    # Test list of states with county grouping
+    drought_obj = usdm.USDM(geography=["CA", "OR"], group_by="county",
+                            time_period=[2020], confirm=False)
+    result = drought_obj.get_comp_stats(stat=["Area"])
+
+    # Should return DataFrame with county geographic columns
+    assert isinstance(result, usdm.pd.DataFrame)
+    assert "county_fips" in result.columns
+    assert "county_name" in result.columns
+    assert "state_code" in result.columns
+    assert "state_name" in result.columns
+
+
+def test_confirm_parameters():
+    """Test that confirm and confirm_threshold parameters are stored."""
+
+    # Test default values
+    drought_obj = usdm.USDM(geography="CA", time_period=[2020])
+    assert drought_obj.confirm == True
+    assert drought_obj.confirm_threshold == 50
+
+    # Test custom values
+    drought_obj2 = usdm.USDM(geography="CA", time_period=[2020],
+                             confirm=False, confirm_threshold=100)
+    assert drought_obj2.confirm == False
+    assert drought_obj2.confirm_threshold == 100
+
+
+# 

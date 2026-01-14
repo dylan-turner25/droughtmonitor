@@ -4,10 +4,12 @@
 
 ## Table of Contents
 
--   [About](#about)
+-   [Introduction](#about)
 -   [Installation](#installation)
 -   [Usage](#usage)
 -   [License](#license)
+
+## Introduction
 
 The `droughtmonitor` package serves as an unofficial API wrapper for [U.S. Drought Monitor](https://droughtmonitor.unl.edu/) and provides a set of tools for making programatic access to the underlying data more accessable. The U.S. Drought Monitor website contains a [landing page](https://droughtmonitor.unl.edu/Data.aspx) for accessing both tabular and spatial data. However, accessing the data through this channel can be tedious for charts, measures, or analysis that need to be frequently updated. Programatic access is possible through the [existing API](https://droughtmonitor.unl.edu/DmData/DataDownload/WebServiceInfo.aspx), but can also be tediuos without prior working knowledge of REST APIs. The `droughtmonitor` package strikes a balance between the two methods as it allows programatic access to enhance reproducability while requireing no additional techincal overhead beyond basic understanding of python.
 
@@ -22,8 +24,23 @@ Currently, `droughtmonitor` can be installed from PyPI using pip. The drought mo
 pip install droughtmonitor
 ```
 
-## Usage 
-Usage of the `droughtmonitor` package starts by creating an object of the class `USDM` which is done by specifying a geographic location (`geography`) and time period (`time_period`). The geography can take the form of `"us"` for all of the United State, `"conus"` for the continental United States, a fips code or two letter abbreviation for a single state (ex: `6`,`"06`,`"CA"`, `"ca"` all return data for California), or a fips code for a single county (ex: `1001`,`"01001"`). An optional `group_by` parameter enables batch processing for multiple geographies: - `group_by="county"`: When geography is a state, retrieves data for all counties in that state - `group_by="state"`: When geography is national ("US"/"CONUS"), retrieves data for all states
+## Usage
+Usage of the `droughtmonitor` package starts by creating an object of the class `USDM` which is done by specifying a geographic location (`geography`) and time period (`time_period`). The geography can take the form of:
+
+- `"us"` or `"conus"` for national data (all of the United States or continental US)
+- A state abbreviation or FIPS code (ex: `"CA"`, `"ca"`, `6`, `"06"` all return data for California)
+- A county FIPS code (ex: `1001`, `"01001"`)
+- A list of geographies (ex: `["CA", "OR", "WA"]`)
+
+An optional `group_by` parameter enables batch processing for multiple geographies:
+
+- `group_by="county"`: Retrieves data for all counties in the specified geography
+  - Works with a single state (e.g., `geography="CA"`)
+  - Works with a list of states (e.g., `geography=["CA", "OR"]`)
+  - Works with national geography (e.g., `geography="US"`) to get all counties in the US
+- `group_by="state"`: When geography is national ("US"/"CONUS"), retrieves data for all states
+
+**Note on API calls**: When using `group_by` with large geographies, the package may make many API calls. By default, you'll be prompted to confirm that you want to proceed if a query will make more than 50 API calls. You can control this with the `confirm=False` parameter or adjust the threshold with `confirm_threshold`.
 
 ``` python
 # import the usdm module from drought monitor
@@ -32,11 +49,17 @@ from droughtmonitor import usdm
 # create a drought object of the USDM class specifying California from 2020 to 2024
 drought = usdm.USDM(geography = "CA", time_period=list(range(2020,2024)))
 
-# create a drought object of the USDM class specifying the continential US from in the first month of 2020.
+# create a drought object of the USDM class specifying the continential US in the first month of 2020
 drought = usdm.USDM(geography = "conus", time_period=["1/1/2020", "1/31/2020"])
 
-# create a drought object for all counties in California 
+# create a drought object for all counties in California
 drought = usdm.USDM(geography = "CA", group_by="county", time_period=[2020, 2021])
+
+# create a drought object for counties in multiple states
+drought = usdm.USDM(geography = ["CA", "NV", "AZ"], group_by="county", time_period=[2020, 2021])
+
+# create a drought object for all counties in the US (will prompt for confirmation)
+drought = usdm.USDM(geography = "US", group_by="county", time_period=[2020])
 
 # create a drought object for all US states
 drought = usdm.USDM(geography = "US", group_by="state", time_period=2024)
@@ -66,17 +89,19 @@ wid = drought.get_weeks_in_drought()
 wid.head()
 ```
 
-### Comprehensive Statistics 
+### Comprehensive Statistics
 
 The `get_comp_stats` method can be used to return several different statistics for each drought level for a specified geography and time period. The argument `stat` controls which statistic is returned and can be one of `["Area", "AreaPercent", "Population", "PopulationPercent", "DSCI"]` (not case sensitive) which correspond to the total area, percentage of an area, the total population, percentage of the population, and the [drought severity coverage index](https://droughtmonitor.unl.edu/About/AbouttheData/DSCI.aspx). The default behavior is to return the specified statistic for all drought levels (in separate columns). If statistics for only one or a few drought threshold are desired, this can be achieved by specifying the `drought_threshold` parameter with a single integer or list of integers out of `[0,1,2,3,4]`.
 
+The `group_by` parameter enables batch processing for multiple geographies. When `group_by="county"` is specified, statistics are retrieved for all counties in the specified geography (state, list of states, or national). When `group_by="state"` is specified with national geography, statistics are retrieved for all states.
+
+#### Basic Examples
 
 ``` python
-
 # create drought object for a single county from 2000 to 2024 using county fips code
 drought = usdm.USDM(geography = "01001" , time_period=list(range(2000,2024)))
 
-# get the percentage of the county that was in each drought level 
+# get the percentage of the county that was in each drought level
 # for each week in the specified time period
 cs = drought.get_comp_stats(stat = "AreaPercent")
 cs.head()
@@ -84,7 +109,7 @@ cs.head()
 # create drought object for california in 2024
 drought = usdm.USDM(geography = "CA" , time_period=2024)
 
-# get the total population subject to each drought level for 
+# get the total population subject to each drought level for
 # every week in 2024
 cs = drought.get_comp_stats(stat = "Population")
 cs.head()
@@ -92,6 +117,38 @@ cs.head()
 # return only the area under D2 level drought
 cs = drought.get_comp_stats(stat = "Area", drought_threshold = 2)
 cs.head()
+
+# get statistics for all counties in California
+drought = usdm.USDM(geography = "CA", group_by="county", time_period=2024)
+cs = drought.get_comp_stats(stat = "AreaPercent")
+cs.head()
+# Result includes columns: county_fips, county_name, state_code, state_name, mapStartDate, mapEndDate, etc.
+
+# get statistics for counties in multiple states (CA, NV, AZ)
+drought = usdm.USDM(geography = ["CA", "NV", "AZ"], group_by="county", time_period=[2020, 2021])
+cs = drought.get_comp_stats(stat = "Population")
+cs.head()
+
+# get statistics for all counties in the US (will prompt for confirmation)
+# Note: This will make ~16,000 API calls (3,256 counties × 5 statistics)
+drought = usdm.USDM(geography = "US", group_by="county", time_period=[2020])
+cs = drought.get_comp_stats()
+# User will be prompted: "Warning: This query will make approximately 16280 API calls. Do you want to proceed? (yes/no):"
+
+# get statistics for all states
+drought = usdm.USDM(geography = "US", group_by="state", time_period=2024)
+cs = drought.get_comp_stats(stat = "Population")
+cs.head()
+
+# bypass confirmation prompt for large queries
+drought = usdm.USDM(geography = "US", group_by="county",
+                    time_period=[2020], confirm=False)
+cs = drought.get_comp_stats()
+
+# adjust the confirmation threshold (default is 50 API calls)
+drought = usdm.USDM(geography = ["CA", "OR", "WA"], group_by="county",
+                    time_period=[2020], confirm_threshold=200)
+cs = drought.get_comp_stats()
 ```
 
 ### Spatial Data 
