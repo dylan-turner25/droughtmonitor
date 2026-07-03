@@ -940,8 +940,12 @@ class USDM:
         Note: This method always returns county-level data as determined by the USDM API,
         regardless of the geography level specified. The group_by parameter is ignored
         for this method since the USDM API only provides weeks in drought data at the
-        county level.
-        
+        county level. A state geography (or list of states) returns one row per county
+        in the state(s), a national geography returns all counties, and a county
+        geography returns that single county (retrieved via its state, then filtered,
+        since the underlying API only filters by state). Counties with zero weeks at
+        the requested drought level are omitted by the API.
+
         Parameters:
         -----------
         drought_threshold : list of int, optional
@@ -981,9 +985,27 @@ class USDM:
         stat = clean_stat(stat)     
 
         # Note: get_weeks_in_drought always returns county-level data from the USDM API
-        # Therefore, we ignore the group_by parameter and use the original geography
-        geographies = [self.geography]
-        
+        # Therefore, we ignore the group_by parameter and use the original geography.
+        # The API's `aoi` parameter only filters by state: it accepts a single
+        # state abbreviation, or blank for all states. Geographies are mapped
+        # to states here and any county filtering happens locally after download.
+        county_filter = None
+        if isinstance(self.geography, list):
+            # list of states: query each state and combine
+            geographies = list(self.geography)
+        elif self.geography in ["TOTAL", "CONUS"]:
+            geographies = [""]
+        elif geography_level(self.geography) == "state":
+            geographies = [self.geography]
+        else:
+            # county fips: query its state, then filter to the county below
+            county_filter = self.geography
+            fips_codes = load_fips_codes()
+            state_abb = fips_codes.loc[
+                fips_codes['state_code'] == self.geography[:2], 'state'
+            ].values[0]
+            geographies = [state_abb]
+
         # initialize list to store all results
         all_results = []
 
@@ -1001,7 +1023,7 @@ class USDM:
             # iterate over stat_type and drought_threshold to create a list of queries
             query.extend(
               [
-                f"{self.url}{area}Get{s}?geography={geo}&dx={drought_level}&minimumweeks=0&startdate={self.start_date}&enddate={self.end_date}"
+                f"{self.url}{area}Get{s}?aoi={geo}&dx={drought_level}&minimumweeks=0&startdate={self.start_date}&enddate={self.end_date}"
                 for drought_level in drought_threshold
                 for s in stat
               ]
@@ -1053,11 +1075,15 @@ class USDM:
 
                 all_results.append(geo_result_df)
 
-        # combine all results (should only be one geography)
+        # combine all results
         if len(all_results) > 0:
-            result_df = all_results[0]  # Only one geography, so take the first result
+            result_df = pd.concat(all_results, ignore_index=True)
         else:
             result_df = pd.DataFrame()
+
+        # filter to the requested county if a county geography was supplied
+        if county_filter is not None and "fips" in result_df.columns:
+            result_df = result_df[result_df["fips"] == county_filter].reset_index(drop=True)
 
         # add date range to specify the query date range
         result_df['QueryStartDate'] = pd.to_datetime(self.start_date)

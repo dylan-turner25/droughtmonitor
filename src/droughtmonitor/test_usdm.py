@@ -98,7 +98,7 @@ def test_get_weeks_in_drought(mocker):
         }
     ]
 
-    mocker.patch("requests.get", return_value=mock_response)
+    mock_get = mocker.patch("requests.get", return_value=mock_response)
 
     # Create a USDM object
     drought_object = usdm.USDM(geography="AL", time_period=2023)
@@ -114,6 +114,73 @@ def test_get_weeks_in_drought(mocker):
     assert "county" in result_df.columns
     assert "state" in result_df.columns
     assert result_df.state.unique() == ["AL"]
+
+    # the geography must be passed via the API's `aoi` parameter (the
+    # endpoint silently ignores unknown parameters and returns national
+    # data, so this is load-bearing)
+    requested_urls = [call.args[0] for call in mock_get.call_args_list]
+    assert all("aoi=AL" in url for url in requested_urls)
+
+
+def test_get_weeks_in_drought_county_filter(mocker):
+    """A county geography queries its state and filters to that county."""
+
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [
+        {
+            'fips': '01003',
+            'startDate': '2023-09-12T00:00:00',
+            'endDate': '2023-11-14T00:00:00',
+            'consecutiveWeeks': 10,
+            'state': 'AL',
+            'county': 'Baldwin County'
+        },
+        {
+            'fips': '01007',
+            'startDate': '2023-11-14T00:00:00',
+            'endDate': '2023-12-26T00:00:00',
+            'consecutiveWeeks': 7,
+            'state': 'AL',
+            'county': 'Bibb County'
+        }
+    ]
+    mock_get = mocker.patch("requests.get", return_value=mock_response)
+
+    # Baldwin County, AL
+    drought_object = usdm.USDM(geography="01003", time_period=2023)
+    result_df = drought_object.get_weeks_in_drought(3, stat="consecutive")
+
+    # the request goes out at the state level
+    requested_urls = [call.args[0] for call in mock_get.call_args_list]
+    assert all("aoi=AL" in url for url in requested_urls)
+
+    # the result is filtered to the requested county
+    assert set(result_df["fips"]) == {"01003"}
+
+
+def test_get_weeks_in_drought_national_blank_aoi(mocker):
+    """A national geography leaves the aoi parameter blank (all states)."""
+
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [
+        {
+            'fips': '01003',
+            'consecutiveWeeks': 10,
+            'startDate': '2023-09-12T00:00:00',
+            'endDate': '2023-11-14T00:00:00',
+            'state': 'AL',
+            'county': 'Baldwin County'
+        }
+    ]
+    mock_get = mocker.patch("requests.get", return_value=mock_response)
+
+    drought_object = usdm.USDM(geography="US", time_period=2023)
+    drought_object.get_weeks_in_drought(3, stat="consecutive")
+
+    requested_urls = [call.args[0] for call in mock_get.call_args_list]
+    assert all("aoi=&" in url for url in requested_urls)
 
 
 def test_get_comp_stats(mocker):

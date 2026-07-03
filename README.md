@@ -69,7 +69,7 @@ drought = usdm.USDM(geography = "US", group_by="state", time_period=2024)
 
 Once an object of the `USDM` class is created, the `get_weeks_in_drought` method can be used to obtain the number of weeks that the specified geography was at a specified drought level. An optional `drought_threshold` parameter can be specified as one of `[0,1,2,3,4]` corresponding to the drought levels used by U.S. Drought Monitor (default is to return measures for all drought levels in distinct columns). Another optional `stat` parameter can be specified as either `"consecutive"` or `"nonconsecutive"` to specify if the number of weeks at the specified drought level needs to be consecutive or not.
 
-**Note**: This method **ignores** the `group_by` parameter since the USDM API only provides weeks in drought data at the county level. The method always returns data at the county level regardless of the geography level specified.
+**Note**: This method **ignores** the `group_by` parameter since the USDM API only provides weeks in drought data at the county level. A state geography (or list of states) returns one row per county in the state(s), `"us"` returns all counties, and a county FIPS code returns that single county. Counties with zero weeks at the requested drought level are omitted by the API.
 
 ``` python
 
